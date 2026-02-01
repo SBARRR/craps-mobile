@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Craps Mobile</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- USE <body class="debug-ui"> FOR DEBUG OUTLINES ^  -->
+
+    <!-- HAMBURGER + SIDE DRAWER (no-JS) -->
+<input type="checkbox" id="navToggle" />
+
+<label id="hamburgerBtn" for="navToggle" aria-label="Open menu">
+  <span class="hamburgerIcon">☰</span>
+  <span class="closeIcon">✕</span>
+</label>
+
+<aside id="sideDrawer" aria-label="Menu drawer">
+  <div class="drawerInner">
+    <div id="drawerPiggySlot"></div>
+    <div id="drawerSaveSlot"></div>
+  </div>
+</aside>
+
+
+<div id="topLeftStats">
+  <div id="bankrollDisplay"></div>
+  <div id="netTrackerDisplay"></div>
+</div>
+
+
+<!-- PIGGYBANK SECTION -->
+<div id="piggySection">
+
+  <div id="piggyControls">
+    <button id="depositBtn">Deposit</button>
+    <button id="withdrawBtn">Withdraw</button>
+  </div>
+
+  <img
+    id="piggyImage"
+    src="assets/piggy bank/piggybank1.webp"
+    alt="Piggybank"
+  />
+
+  <div id="piggybankDisplay"></div>
+
+</div>
+
+<!-- STATUS PANEL (Merged): Phase + Active Bets + Outcome Lines -->
+<div id="statusAlwaysPanel">
+  <div id="phaseDisplay"></div>
+  <div id="activeBetsList"></div>
+  <div id="outcomeLines"></div>
+</div>
+
+  <!-- CHIP SELECTOR -->
+  <div id="chipSelector">
+    <span>Select Chip:</span>
+<button class="chipBtn" data-value="1" aria-label="$1">
+  <img src="assets/chippies/1.webp" alt="$1 chip" />
+</button>
+
+<button class="chipBtn" data-value="5" aria-label="$5">
+  <img src="assets/chippies/5.webp" alt="$5 chip" />
+</button>
+
+<button class="chipBtn" data-value="10" aria-label="$10">
+  <img src="assets/chippies/10.webp" alt="$10 chip" />
+</button>
+
+<button class="chipBtn" data-value="25" aria-label="$25">
+  <img src="assets/chippies/25.webp" alt="$25 chip" />
+</button>
+
+<button class="chipBtn" data-value="ALL" aria-label="All chips">
+  <img src="assets/chippies/all.webp" alt="All chips" />
+</button>
+  </div>
+
+  <!-- SAVE CONTROLS -->
+  <div id="saveControls">
+    <button id="exportSaveBtn">Export Save</button>
+    <button id="importSaveBtn">Import Save</button>
+    <input id="importFileInput" type="file" accept="application/json" style="display:none" />
+  </div>
+
+  <div id="controls">
+    <button id="placePassBtn">Place Pass</button>
+    <button id="placeDontPassBtn">Place Don’t Pass</button>
+    <button id="addPassOddsBtn">Add Pass Odds</button>
+    <button id="addDontPassOddsBtn">Add Don’t Pass Odds</button>
+    <button id="placeFieldBtn">Place Field</button>
+
+
+  </div>
+
+<div id="playControls">
+  <button id="rollButton">Roll Dice</button>
+  <button id="undoLastBtn">Undo Last (Extras)</button>
+  <button id="clearAllBetsBtn">Clear ALL Bets</button>
+</div>
+
+  <div id="tableStage">
+<img
+  id="tableGraphic"
+  src="assets/background/table.webp"
+  alt="Craps table"
+/>
+
+
+<!-- TABLE CLICK OVERLAY (zones will be positioned with CSS next) -->
+<div id="tableOverlay">
+  <div class="betZone" id="zonePass" title="Pass Line">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div class="betZone" id="zoneDontPass" title="Don't Pass">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div class="betZone" id="zonePassOdds" title="Pass Odds">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div class="betZone" id="zoneDontPassOdds" title="Don't Pass Odds">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div class="betZone" id="zoneField" title="Field">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div id="diceLandingZone"></div>
+
+  <div id="puckZoneOff" class="puckZone"></div>
+<div id="puckZone4" class="puckZone"></div>
+<div id="puckZone5" class="puckZone"></div>
+<div id="puckZone6" class="puckZone"></div>
+<div id="puckZone8" class="puckZone"></div>
+<div id="puckZone9" class="puckZone"></div>
+<div id="puckZone10" class="puckZone"></div>
+</div>
+</div>
+
+<!-- PUCK (OFF/ON) -->
+<img
+  id="puck"
+  src="assets/puck/off.webp"
+  alt="Puck"
+/>
+
+<div id="dice">
+  <img id="die1" />
+  <img id="die2" />
+</div>
+
+  <script src="script.js"></script>
+
+</body>
+</html>
