@@ -23,6 +23,7 @@ const PUCK_ON_SRC  = "assets/puck/on.webp";
 // Background music (low volume)
 const BGM_SRC = "assets/bgm/bgm.mp3";
 let bgmAudio = null;
+let bgmWasPlaying = false;
 
 // UI click / tap
 const TAP_SOUND_SRC = "assets/tap sound/tap.mp3";
@@ -32,7 +33,11 @@ const DEPOSIT_SOUND_SRC = "assets/piggybank sounds/deposit.mp3";
 const WITHDRAW_SOUND_SRC = "assets/piggybank sounds/withdraw.mp3";
 
 // Win / Lose
-const WIN_SOUND_SRC = "assets/winorlose/win.mp3";
+const WIN_SOUND_SOURCES = [
+  "assets/winorlose/win.mp3",
+  "assets/winorlose/win3.mp3",
+  "assets/winorlose/win2.mp3"
+];
 const LOSE_SOUND_SRC = "assets/winorlose/lose.mp3";
 
 function playOneShot(src, volume = 1.0) {
@@ -44,6 +49,20 @@ function playOneShot(src, volume = 1.0) {
     const p = a.play();
     if (p && typeof p.catch === "function") p.catch(() => {});
   } catch {}
+}
+
+function playOneShotOncePerRoll(src, volume = 1.0) {
+  if (!gameState || !gameState._soundsThisRoll) {
+    playOneShot(src, volume);
+    return;
+  }
+  if (gameState._soundsThisRoll.has(src)) return;
+  gameState._soundsThisRoll.add(src);
+  playOneShot(src, volume);
+}
+
+function getRandomWinSoundSrc() {
+  return WIN_SOUND_SOURCES[Math.floor(Math.random() * WIN_SOUND_SOURCES.length)];
 }
 
 function ensureBgm() {
@@ -63,22 +82,41 @@ function startBgm() {
   } catch {}
 }
 
+function handleVisibilityChange() {
+  if (!bgmAudio) return;
+  if (document.hidden) {
+    bgmWasPlaying = !bgmAudio.paused;
+    bgmAudio.pause();
+  } else if (bgmWasPlaying) {
+    try {
+      const p = bgmAudio.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } catch {}
+  }
+}
+
 /* --------------------
    ROLL SOUND (UI ONLY)
 -------------------- */
-const ROLL_SOUND_SRC = "assets/roll sound/roll.mp3";
+const ROLL_SOUND_SOURCES = [
+  "assets/roll sound/roll.mp3",
+  "assets/roll sound/roll2.mp3"
+];
 let rollAudio = null;
+let rollAudioSrc = null;
 
-function ensureRollAudio() {
-  if (rollAudio) return rollAudio;
-  rollAudio = new Audio(ROLL_SOUND_SRC);
+function ensureRollAudio(src) {
+  if (rollAudio && rollAudioSrc === src) return rollAudio;
+  rollAudio = new Audio(src);
+  rollAudioSrc = src;
   rollAudio.loop = true;      // keep playing until we explicitly stop it
   rollAudio.preload = "auto"; // try to load early
   return rollAudio;
 }
 
 function startRollSound() {
-  const a = ensureRollAudio();
+  const src = ROLL_SOUND_SOURCES[Math.floor(Math.random() * ROLL_SOUND_SOURCES.length)];
+  const a = ensureRollAudio(src);
   try {
     a.currentTime = 0;
     const p = a.play(); // must be triggered by the user's click
@@ -156,6 +194,32 @@ const zoneDontPass = document.getElementById("zoneDontPass");
 const zonePassOdds = document.getElementById("zonePassOdds");
 const zoneDontPassOdds = document.getElementById("zoneDontPassOdds");
 const zoneField = document.getElementById("zoneField");
+const zoneCome = document.getElementById("zoneCome");
+const zoneDontCome = document.getElementById("zoneDontCome");
+const zoneCome4 = document.getElementById("zoneCome4");
+const zoneCome5 = document.getElementById("zoneCome5");
+const zoneCome6 = document.getElementById("zoneCome6");
+const zoneCome8 = document.getElementById("zoneCome8");
+const zoneCome9 = document.getElementById("zoneCome9");
+const zoneCome10 = document.getElementById("zoneCome10");
+const zoneDontCome4 = document.getElementById("zoneDontCome4");
+const zoneDontCome5 = document.getElementById("zoneDontCome5");
+const zoneDontCome6 = document.getElementById("zoneDontCome6");
+const zoneDontCome8 = document.getElementById("zoneDontCome8");
+const zoneDontCome9 = document.getElementById("zoneDontCome9");
+const zoneDontCome10 = document.getElementById("zoneDontCome10");
+const zoneComeOdds4 = document.getElementById("zoneComeOdds4");
+const zoneComeOdds5 = document.getElementById("zoneComeOdds5");
+const zoneComeOdds6 = document.getElementById("zoneComeOdds6");
+const zoneComeOdds8 = document.getElementById("zoneComeOdds8");
+const zoneComeOdds9 = document.getElementById("zoneComeOdds9");
+const zoneComeOdds10 = document.getElementById("zoneComeOdds10");
+const zoneDontComeOdds4 = document.getElementById("zoneDontComeOdds4");
+const zoneDontComeOdds5 = document.getElementById("zoneDontComeOdds5");
+const zoneDontComeOdds6 = document.getElementById("zoneDontComeOdds6");
+const zoneDontComeOdds8 = document.getElementById("zoneDontComeOdds8");
+const zoneDontComeOdds9 = document.getElementById("zoneDontComeOdds9");
+const zoneDontComeOdds10 = document.getElementById("zoneDontComeOdds10");
 
 
 
@@ -165,7 +229,11 @@ const zoneLastChipSrc = {
   dontPass: null,
   passOdds: null,
   dontPassOdds: null,
-  field: null
+  field: null,
+  come: null,
+  dontCome: null,
+  comePoint: null,
+  dontComePoint: null
 };
 
 // UI-only: current selected chip image src (from chip selector)
@@ -205,6 +273,62 @@ const saveControlsEl = document.getElementById("saveControls");
 // "home markers" so we can always put them back where they started
 const piggyHomeMarker = document.createComment("piggyHome");
 const saveHomeMarker  = document.createComment("saveHome");
+
+const floatingChipsLayerEl = document.getElementById("floatingChipsLayer");
+const oddsModalEl = document.getElementById("oddsModal");
+const oddsModalTitleEl = document.getElementById("oddsModalTitle");
+const oddsModalCloseEl = document.getElementById("oddsModalClose");
+const oddsModalRowsEl = document.getElementById("oddsModalRows");
+const oddsModalIncrementsEl = document.getElementById("oddsModalIncrements");
+
+const comeTravelZones = {
+  4: zoneCome4,
+  5: zoneCome5,
+  6: zoneCome6,
+  8: zoneCome8,
+  9: zoneCome9,
+  10: zoneCome10
+};
+
+const dontComeTravelZones = {
+  4: zoneDontCome4,
+  5: zoneDontCome5,
+  6: zoneDontCome6,
+  8: zoneDontCome8,
+  9: zoneDontCome9,
+  10: zoneDontCome10
+};
+
+const comeOddsZones = {
+  4: zoneComeOdds4,
+  5: zoneComeOdds5,
+  6: zoneComeOdds6,
+  8: zoneComeOdds8,
+  9: zoneComeOdds9,
+  10: zoneComeOdds10
+};
+
+const dontComeOddsZones = {
+  4: zoneDontComeOdds4,
+  5: zoneDontComeOdds5,
+  6: zoneDontComeOdds6,
+  8: zoneDontComeOdds8,
+  9: zoneDontComeOdds9,
+  10: zoneDontComeOdds10
+};
+
+const suppressedZoneChipIds = new Set();
+
+const oddsModalState = {
+  open: false,
+  type: null, // "come" | "dontCome"
+  pointNumber: null,
+  selectedInc: { mode: "fixed", cents: dollarsToCents(5) }
+};
+
+const travelCycleState = new Map();
+const TRAVEL_CYCLE_MS = 3000;
+const TRAVEL_FADE_MS = 220;
 
 if (piggySectionEl && piggySectionEl.parentNode) {
   piggySectionEl.parentNode.insertBefore(piggyHomeMarker, piggySectionEl);
@@ -403,36 +527,20 @@ function renderNetTracker() {
 function renderActiveBetsList() {
   if (!activeBetsListEl) return;
 
-  // Add up totals per bet type
-  const totals = new Map();
+  let totalAtRisk = 0;
   for (const bet of gameState.bets) {
     if (bet.status !== "active") continue;
-    totals.set(bet.type, (totals.get(bet.type) || 0) + bet.amountCents);
+    totalAtRisk += bet.amountCents;
   }
 
-  // Clear existing lines
   activeBetsListEl.innerHTML = "";
+  if (totalAtRisk <= 0) return;
 
-  // Stable display order (so the list doesn’t jump around)
-  const order = ["passLine", "passOdds", "dontPass", "dontPassOdds", "field"];
-  const labels = {
-    passLine: "Pass",
-    passOdds: "Pass Odds",
-    dontPass: "Don't Pass",
-    dontPassOdds: "Don't Pass Odds",
-    field: "Field"
-  };
-
-  for (const type of order) {
-    const amt = totals.get(type);
-    if (!amt) continue;
-
-    const row = document.createElement("div");
-    row.innerHTML =
-  `<span class="betName">${labels[type]}:</span> ` +
-  `<span class="amount">${centsToDollarsString(amt)}</span>`;
-    activeBetsListEl.appendChild(row);
-  }
+  const row = document.createElement("div");
+  row.innerHTML =
+    `<span class="betName">At Risk:</span> ` +
+    `<span class="amount">${centsToDollarsString(totalAtRisk)}</span>`;
+  activeBetsListEl.appendChild(row);
 }
 
 /* --------------------
@@ -457,7 +565,7 @@ function showOutcomeLines(lines) {
     const left = (lastSpace >= 0) ? s.slice(0, lastSpace) : s;
     const right = (lastSpace >= 0) ? s.slice(lastSpace + 1) : "";
 
-    const isWin = left.includes(" Won:");
+    const isWin = left.trim().startsWith("Won:");
     const outcomeClass = isWin ? "outcomeWin" : "outcomeLoss";
 
     row.innerHTML =
@@ -471,7 +579,13 @@ function showOutcomeLines(lines) {
 
 
 function clearTableBetTotalsOnly() {
-  const zones = [zonePass, zoneDontPass, zonePassOdds, zoneDontPassOdds, zoneField];
+  const zones = [
+    zonePass, zoneDontPass, zonePassOdds, zoneDontPassOdds, zoneField, zoneCome, zoneDontCome,
+    zoneCome4, zoneCome5, zoneCome6, zoneCome8, zoneCome9, zoneCome10,
+    zoneDontCome4, zoneDontCome5, zoneDontCome6, zoneDontCome8, zoneDontCome9, zoneDontCome10,
+    zoneComeOdds4, zoneComeOdds5, zoneComeOdds6, zoneComeOdds8, zoneComeOdds9, zoneComeOdds10,
+    zoneDontComeOdds4, zoneDontComeOdds5, zoneDontComeOdds6, zoneDontComeOdds8, zoneDontComeOdds9, zoneDontComeOdds10
+  ];
 
   for (const z of zones) {
     if (!z) continue;
@@ -483,11 +597,75 @@ function clearTableBetTotalsOnly() {
   }
 }
 
+function setZoneDisplayForAmount(zoneEl, chipSrc, amt) {
+  if (!zoneEl) return;
+  const img = zoneEl.querySelector(".zoneChip");
+  const total = zoneEl.querySelector(".zoneTotal");
+
+  if (amt <= 0) {
+    if (img) { img.removeAttribute("src"); img.style.display = "none"; }
+    if (total) { total.textContent = ""; total.style.display = "none"; }
+    return;
+  }
+
+  if (img && chipSrc && !suppressedZoneChipIds.has(zoneEl.id)) {
+    img.setAttribute("src", chipSrc);
+    img.style.display = "block";
+  } else if (img) {
+    img.style.display = "none";
+  }
+
+  if (total) {
+    if (hideZoneTotals) {
+      total.textContent = "";
+      total.style.display = "none";
+    } else {
+      total.textContent = centsToDollarsString(amt);
+      total.style.display = "block";
+    }
+  }
+}
+
 function renderTableBetDisplays() {
   // total cents per bet type
   const totals = new Map();
+  const comePointTotals = new Map();
+  const dontComePointTotals = new Map();
+  const comeOddsTotals = new Map();
+  const dontComeOddsTotals = new Map();
+  const comePointBetsByNum = new Map();
+  const dontComePointBetsByNum = new Map();
+  const comeOddsByParentId = new Map();
+  const dontComeOddsByParentId = new Map();
+
   for (const bet of gameState.bets) {
     if (bet.status !== "active") continue;
+    if (bet.type === "comePoint" && bet.number) {
+      comePointTotals.set(bet.number, (comePointTotals.get(bet.number) || 0) + bet.amountCents);
+      if (!comePointBetsByNum.has(bet.number)) comePointBetsByNum.set(bet.number, []);
+      comePointBetsByNum.get(bet.number).push(bet);
+      continue;
+    }
+    if (bet.type === "dontComePoint" && bet.number) {
+      dontComePointTotals.set(bet.number, (dontComePointTotals.get(bet.number) || 0) + bet.amountCents);
+      if (!dontComePointBetsByNum.has(bet.number)) dontComePointBetsByNum.set(bet.number, []);
+      dontComePointBetsByNum.get(bet.number).push(bet);
+      continue;
+    }
+    if (bet.type === "comeOdds" && bet.number) {
+      comeOddsTotals.set(bet.number, (comeOddsTotals.get(bet.number) || 0) + bet.amountCents);
+      if (bet.parentBetId) {
+        comeOddsByParentId.set(bet.parentBetId, (comeOddsByParentId.get(bet.parentBetId) || 0) + bet.amountCents);
+      }
+      continue;
+    }
+    if (bet.type === "dontComeOdds" && bet.number) {
+      dontComeOddsTotals.set(bet.number, (dontComeOddsTotals.get(bet.number) || 0) + bet.amountCents);
+      if (bet.parentBetId) {
+        dontComeOddsByParentId.set(bet.parentBetId, (dontComeOddsByParentId.get(bet.parentBetId) || 0) + bet.amountCents);
+      }
+      continue;
+    }
     totals.set(bet.type, (totals.get(bet.type) || 0) + bet.amountCents);
   }
 
@@ -507,7 +685,7 @@ function renderTableBetDisplays() {
 
     // chip shown = last chip clicked for this zone (if we have one)
     const chipSrc = zoneLastChipSrc[betTypeKey];
-    if (img && chipSrc) {
+    if (img && chipSrc && !suppressedZoneChipIds.has(zoneEl.id)) {
       img.setAttribute("src", chipSrc);
       img.style.display = "block";
     } else if (img) {
@@ -530,6 +708,42 @@ function renderTableBetDisplays() {
   setZoneDisplay(zonePassOdds, "passOdds");
   setZoneDisplay(zoneDontPassOdds, "dontPassOdds");
   setZoneDisplay(zoneField, "field");
+  setZoneDisplay(zoneCome, "come");
+  setZoneDisplay(zoneDontCome, "dontCome");
+
+  const numbers = [4, 5, 6, 8, 9, 10];
+  for (const n of numbers) {
+    const comeBets = (comePointBetsByNum.get(n) || []).sort((a, b) => a.id - b.id);
+    const dontComeBets = (dontComePointBetsByNum.get(n) || []).sort((a, b) => a.id - b.id);
+
+    if (comeBets.length > 1) {
+      const items = getCycleLabelItems(comeBets, new Map(comeBets.map(b => [b.id, b.amountCents])));
+      renderCyclingZone(comeTravelZones[n], items, zoneLastChipSrc.comePoint, comePointTotals.get(n) || 0);
+    } else {
+      renderCyclingZone(comeTravelZones[n], [], zoneLastChipSrc.comePoint, comePointTotals.get(n) || 0);
+    }
+
+    if (dontComeBets.length > 1) {
+      const items = getCycleLabelItems(dontComeBets, new Map(dontComeBets.map(b => [b.id, b.amountCents])));
+      renderCyclingZone(dontComeTravelZones[n], items, zoneLastChipSrc.dontComePoint, dontComePointTotals.get(n) || 0);
+    } else {
+      renderCyclingZone(dontComeTravelZones[n], [], zoneLastChipSrc.dontComePoint, dontComePointTotals.get(n) || 0);
+    }
+
+    if (comeBets.length > 1) {
+      const items = getCycleLabelItems(comeBets, comeOddsByParentId);
+      renderCyclingZone(comeOddsZones[n], items, zoneLastChipSrc.comePoint, comeOddsTotals.get(n) || 0);
+    } else {
+      renderCyclingZone(comeOddsZones[n], [], zoneLastChipSrc.comePoint, comeOddsTotals.get(n) || 0);
+    }
+
+    if (dontComeBets.length > 1) {
+      const items = getCycleLabelItems(dontComeBets, dontComeOddsByParentId);
+      renderCyclingZone(dontComeOddsZones[n], items, zoneLastChipSrc.dontComePoint, dontComeOddsTotals.get(n) || 0);
+    } else {
+      renderCyclingZone(dontComeOddsZones[n], [], zoneLastChipSrc.dontComePoint, dontComeOddsTotals.get(n) || 0);
+    }
+  }
 }
 
 
@@ -632,6 +846,11 @@ const gameState = {
   piggybankCents: 0,
 
   netTrackerCents: 0, // + means Up, - means In the hole
+  _currentRollNetCents: 0,
+  _soundsThisRoll: null,
+  _rollSoundFlags: null,
+  _rollWinCents: 0,
+  _rollLoseCents: 0,
 
   bets: [],
 
@@ -645,7 +864,7 @@ _currentOutcomeLines: null, // UI-only: per-roll scratchpad
   undoStack: []
 };
 
-const UNDOABLE_EXTRA_TYPES = new Set(["field", "passOdds", "dontPassOdds"]);
+const UNDOABLE_EXTRA_TYPES = new Set(["field", "passOdds", "dontPassOdds", "come", "dontCome", "comeOdds", "dontComeOdds"]);
 
 /* --------------------
    DICE ANIMATION (UI ONLY)
@@ -892,13 +1111,248 @@ function rollOneDie() {
   return Math.floor(Math.random() * 6) + 1;
 }
 
+let nextBetId = 1;
+function getNextBetId() {
+  return nextBetId++;
+}
+
+function isPointNumber(total) {
+  return total === 4 || total === 5 || total === 6 ||
+         total === 8 || total === 9 || total === 10;
+}
+
+function getZoneChipRect(zoneEl) {
+  if (!zoneEl) return null;
+  const chip = zoneEl.querySelector(".zoneChip");
+  if (chip) {
+    const r = chip.getBoundingClientRect();
+    if (r.width >= 4 && r.height >= 4) {
+      return { x: r.left, y: r.top, width: r.width, height: r.height };
+    }
+  }
+
+  const zr = zoneEl.getBoundingClientRect();
+  if (!zr) return null;
+  const size = Math.min(zr.width, zr.height, 64);
+  const x = zr.left + (zr.width - size) / 2;
+  const y = zr.top + (zr.height - size) / 2;
+  return { x, y, width: size, height: size };
+}
+
+function animateChipTravel({ srcZone, destZone, chipSrc, durationMs = 450 }) {
+  if (!floatingChipsLayerEl || !srcZone || !destZone || !chipSrc) return;
+
+  const from = getZoneChipRect(srcZone);
+  const to = getZoneChipRect(destZone);
+  if (!from || !to) return;
+
+  suppressedZoneChipIds.add(destZone.id);
+  renderTableBetDisplays();
+
+  const chip = document.createElement("img");
+  chip.className = "floatingChip";
+  chip.src = chipSrc;
+  chip.style.left = `${from.x}px`;
+  chip.style.top = `${from.y}px`;
+  chip.style.width = `${from.width}px`;
+  chip.style.height = `${from.height}px`;
+  chip.style.transition = `left ${durationMs}ms ease-out, top ${durationMs}ms ease-out, width ${durationMs}ms ease-out, height ${durationMs}ms ease-out`;
+
+  floatingChipsLayerEl.appendChild(chip);
+
+  requestAnimationFrame(() => {
+    chip.style.left = `${to.x}px`;
+    chip.style.top = `${to.y}px`;
+    chip.style.width = `${to.width}px`;
+    chip.style.height = `${to.height}px`;
+  });
+
+  window.setTimeout(() => {
+    chip.remove();
+    suppressedZoneChipIds.delete(destZone.id);
+    renderTableBetDisplays();
+  }, durationMs);
+}
+
+function getCycleLabelItems(bets, amountsByParentId) {
+  const baseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const items = [];
+  for (let i = 0; i < bets.length; i++) {
+    const bet = bets[i];
+    const letter = baseLetters[i] || `#${i + 1}`;
+    const amt = amountsByParentId.get(bet.id) || 0;
+    items.push(`Bet ${letter} ${centsToDollarsString(amt)}`);
+  }
+  return items;
+}
+
+function renderCyclingZone(zoneEl, items, chipSrc, totalFallbackCents) {
+  if (!zoneEl) return;
+
+  if (!items || items.length <= 1) {
+    travelCycleState.delete(zoneEl.id);
+    zoneEl.classList.remove("travelCycle");
+    if (typeof totalFallbackCents === "number") {
+      setZoneDisplayForAmount(zoneEl, chipSrc, totalFallbackCents);
+    }
+    return;
+  }
+
+  zoneEl.classList.add("travelCycle");
+  if (!travelCycleState.has(zoneEl.id)) {
+    travelCycleState.set(zoneEl.id, { index: 0, lastSwitch: performance.now(), items });
+  } else {
+    travelCycleState.get(zoneEl.id).items = items;
+  }
+
+  const state = travelCycleState.get(zoneEl.id);
+  const img = zoneEl.querySelector(".zoneChip");
+  const total = zoneEl.querySelector(".zoneTotal");
+
+  if (img && chipSrc && !suppressedZoneChipIds.has(zoneEl.id)) {
+    img.setAttribute("src", chipSrc);
+    img.style.display = "block";
+  } else if (img) {
+    img.style.display = "none";
+  }
+
+  if (total) {
+    if (hideZoneTotals) {
+      total.textContent = "";
+      total.style.display = "none";
+    } else {
+      total.textContent = state.items[state.index] || "";
+      total.style.display = "block";
+    }
+  }
+}
+
+function startTravelCycler() {
+  setInterval(() => {
+    if (travelCycleState.size === 0) return;
+    const now = performance.now();
+    for (const [zoneId, state] of travelCycleState.entries()) {
+      if (now - state.lastSwitch < TRAVEL_CYCLE_MS) continue;
+      state.lastSwitch = now;
+      state.index = (state.index + 1) % state.items.length;
+
+      const zoneEl = document.getElementById(zoneId);
+      if (!zoneEl) continue;
+      const total = zoneEl.querySelector(".zoneTotal");
+      if (!total || hideZoneTotals) continue;
+
+      total.classList.add("cycleFade");
+      window.setTimeout(() => {
+        total.textContent = state.items[state.index] || "";
+        total.classList.remove("cycleFade");
+      }, TRAVEL_FADE_MS);
+    }
+  }, 120);
+}
+
+function openOddsModal(titleText) {
+  if (!oddsModalEl) return;
+  if (oddsModalTitleEl) oddsModalTitleEl.textContent = titleText || "Bet Info";
+  if (oddsModalRowsEl) oddsModalRowsEl.innerHTML = "";
+  oddsModalEl.classList.remove("hidden");
+  oddsModalEl.setAttribute("aria-hidden", "false");
+  oddsModalState.open = true;
+}
+
+function closeOddsModal() {
+  if (!oddsModalEl) return;
+  oddsModalEl.classList.add("hidden");
+  oddsModalEl.setAttribute("aria-hidden", "true");
+  oddsModalState.open = false;
+}
+
+function renderOddsModalRows({ labelPrefix, bets, oddsByParentId }) {
+  if (!oddsModalRowsEl) return;
+  oddsModalRowsEl.innerHTML = "";
+
+  const sorted = [...bets].sort((a, b) => a.id - b.id);
+  const baseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  for (let i = 0; i < sorted.length; i++) {
+    const bet = sorted[i];
+    const letter = baseLetters[i] || `#${i + 1}`;
+    const oddsCents = oddsByParentId.get(bet.id) || 0;
+
+    const row = document.createElement("div");
+    row.className = "oddsRow";
+    row.innerHTML =
+      `<span class="oddsRowLabel">${labelPrefix} ${letter}:</span> ` +
+      `<span class="oddsRowAmounts">` +
+        `<span class="oddsBase">${centsToDollarsString(bet.amountCents)} Base</span>` +
+        ` / ` +
+        `<span class="oddsOdds">${centsToDollarsString(oddsCents)} Odds</span>` +
+      `</span> ` +
+      `<span class="oddsRowButtons">` +
+        `<button class="oddsPlus" data-bet-id="${bet.id}">+</button>` +
+        `<button class="oddsMinus" data-bet-id="${bet.id}">-</button>` +
+      `</span>`;
+
+    oddsModalRowsEl.appendChild(row);
+  }
+}
+
+function openOddsSelectionModal({ type, pointNumber }) {
+  const isCome = type === "come";
+  const title = `${isCome ? "Come" : "Don't Come"} ${pointNumber}`;
+  const bets = isCome
+    ? getComePointBetsForNumber(pointNumber)
+    : getDontComePointBetsForNumber(pointNumber);
+
+  const oddsByParentId = new Map();
+  for (const b of gameState.bets) {
+    if (b.status !== "active") continue;
+    if (isCome && b.type === "comeOdds" && b.parentBetId) {
+      oddsByParentId.set(b.parentBetId, (oddsByParentId.get(b.parentBetId) || 0) + b.amountCents);
+    }
+    if (!isCome && b.type === "dontComeOdds" && b.parentBetId) {
+      oddsByParentId.set(b.parentBetId, (oddsByParentId.get(b.parentBetId) || 0) + b.amountCents);
+    }
+  }
+
+  openOddsModal(title);
+  const nextType = isCome ? "come" : "dontCome";
+  const sameContext = oddsModalState.open &&
+    oddsModalState.type === nextType &&
+    oddsModalState.pointNumber === pointNumber;
+
+  oddsModalState.type = nextType;
+  oddsModalState.pointNumber = pointNumber;
+
+  if (!sameContext) {
+    oddsModalState.selectedInc = { mode: "fixed", cents: dollarsToCents(5) };
+  }
+
+  if (oddsModalIncrementsEl) {
+    const btns = oddsModalIncrementsEl.querySelectorAll(".incBtn");
+    btns.forEach(b => {
+      const raw = b.dataset.inc;
+      let selected = false;
+      if (oddsModalState.selectedInc.mode === "ALL") {
+        selected = raw === "ALL";
+      } else {
+        const dollars = Number(raw);
+        if (Number.isFinite(dollars)) {
+          selected = oddsModalState.selectedInc.cents === dollarsToCents(dollars);
+        }
+      }
+      b.classList.toggle("selected", selected);
+    });
+  }
+  renderOddsModalRows({
+    labelPrefix: "Bet",
+    bets,
+    oddsByParentId
+  });
+}
+
 function updateGamePhaseFromTotal(total) {
   if (gameState.phase === "comeOut") {
-    const isPointNumber =
-      total === 4 || total === 5 || total === 6 ||
-      total === 8 || total === 9 || total === 10;
-
-    if (isPointNumber) {
+    if (isPointNumber(total)) {
       gameState.phase = "point";
       gameState.point = total;
     }
@@ -1020,7 +1474,8 @@ function settleBet(bet, result, profitCents) {
     gameState.bankrollCents += bet.amountCents + profitCents;
     netForTracker = profitCents;
     console.log(`${bet.type.toUpperCase()} SETTLED: WIN | profit=${centsToDollarsString(profitCents)}`);
-    playOneShot(WIN_SOUND_SRC, 0.3);
+    if (gameState._rollSoundFlags) gameState._rollSoundFlags.win = true;
+    if (typeof gameState._rollWinCents === "number") gameState._rollWinCents += profitCents;
   } else if (result === "push") {
     gameState.bankrollCents += bet.amountCents;
     netForTracker = 0;
@@ -1028,30 +1483,15 @@ function settleBet(bet, result, profitCents) {
   } else {
     netForTracker = -bet.amountCents;
     console.log(`${bet.type.toUpperCase()} SETTLED: LOSE | profit=$0.00`);
-    playOneShot(LOSE_SOUND_SRC, 1.0);
-  }
-    // NEW: record an outcome line for Section 2 (pushes are hidden)
-  if (result !== "push" && Array.isArray(gameState._currentOutcomeLines)) {
-    const labels = {
-      passLine: "Pass",
-      passOdds: "Pass Odds",
-      dontPass: "Don't Pass",
-      dontPassOdds: "Don't Pass Odds",
-      field: "Field"
-    };
-
-    const label = labels[bet.type] || bet.type;
-
-    // Win shows PROFIT ONLY (not principal). Lose shows -bet amount.
-    const deltaCents = (result === "win") ? profitCents : -bet.amountCents;
-
-    const verb = (result === "win") ? "Won" : "Lost";
-    const sign = (deltaCents >= 0) ? "+" : "-";
-    const abs = centsToDollarsString(Math.abs(deltaCents));
-
-    gameState._currentOutcomeLines.push(`${label} ${verb}: ${sign}${abs}`);
+    if (gameState._rollSoundFlags) gameState._rollSoundFlags.lose = true;
+    if (typeof gameState._rollLoseCents === "number") gameState._rollLoseCents += bet.amountCents;
   }
 
+
+    // Per-roll net (for the simplified "Win/Loss per roll" status line)
+  if (typeof gameState._currentRollNetCents === "number") {
+    gameState._currentRollNetCents += netForTracker;
+  }
   gameState.netTrackerCents += netForTracker;
 
   renderBankroll();
@@ -1076,6 +1516,20 @@ function dontPassOddsProfit(amountCents, point) {
   return 0;
 }
 
+function comeOddsProfit(amountCents, point) {
+  if (point === 4 || point === 10) return amountCents * 2;
+  if (point === 5 || point === 9)  return Math.round(amountCents * 3 / 2);
+  if (point === 6 || point === 8)  return Math.round(amountCents * 6 / 5);
+  return 0;
+}
+
+function dontComeOddsProfit(amountCents, point) {
+  if (point === 4 || point === 10) return Math.round(amountCents / 2);
+  if (point === 5 || point === 9)  return Math.round(amountCents * 2 / 3);
+  if (point === 6 || point === 8)  return Math.round(amountCents * 5 / 6);
+  return 0;
+}
+
 function fieldProfit(amountCents, total) {
   if (total === 2 || total === 12) return amountCents * 2;
   return amountCents;
@@ -1091,8 +1545,12 @@ function isFieldWin(total) {
 -------------------- */
 function createFieldBet(amountCents) {
   return {
+    id: getNextBetId(),
+    parentBetId: null,
     type: "field",
     status: "inactive",
+    state: "active",
+    number: null,
     amountCents,
 
     resolve(outcome) {
@@ -1110,10 +1568,14 @@ function createFieldBet(amountCents) {
   };
 }
 
-function createPassOddsBet(amountCents, pointNumber) {
+function createPassOddsBet(amountCents, pointNumber, parentBetId) {
   return {
+    id: getNextBetId(),
+    parentBetId: parentBetId ?? null,
     type: "passOdds",
     status: "inactive",
+    state: "active",
+    number: pointNumber,
     amountCents,
     pointNumber,
 
@@ -1136,10 +1598,14 @@ function createPassOddsBet(amountCents, pointNumber) {
   };
 }
 
-function createDontPassOddsBet(amountCents, pointNumber) {
+function createDontPassOddsBet(amountCents, pointNumber, parentBetId) {
   return {
+    id: getNextBetId(),
+    parentBetId: parentBetId ?? null,
     type: "dontPassOdds",
     status: "inactive",
+    state: "active",
+    number: pointNumber,
     amountCents,
     pointNumber,
 
@@ -1164,8 +1630,12 @@ function createDontPassOddsBet(amountCents, pointNumber) {
 
 function createPassLineBet(amountCents) {
   return {
+    id: getNextBetId(),
+    parentBetId: null,
     type: "passLine",
     status: "inactive",
+    state: "active",
+    number: null,
     amountCents,
     odds: null,
 
@@ -1189,8 +1659,12 @@ function createPassLineBet(amountCents) {
 
 function createDontPassBet(amountCents) {
   return {
+    id: getNextBetId(),
+    parentBetId: null,
     type: "dontPass",
     status: "inactive",
+    state: "active",
+    number: null,
     amountCents,
     odds: null,
 
@@ -1209,6 +1683,224 @@ function createDontPassBet(amountCents) {
 
       if (outcome.dontPassLine === "push") {
         settleBet(this, "push", 0);
+        return true;
+      }
+
+      return false;
+    }
+  };
+}
+
+function createComeOddsBet(amountCents, pointNumber, parentBetId) {
+  return {
+    id: getNextBetId(),
+    parentBetId: parentBetId ?? null,
+    type: "comeOdds",
+    status: "inactive",
+    state: "active",
+    number: pointNumber,
+    amountCents,
+    pointNumber,
+
+    resolve(outcome) {
+      if (this.status !== "active") return false;
+      const total = outcome.total;
+
+      if (total === this.pointNumber) {
+        settleBet(this, "win", comeOddsProfit(this.amountCents, this.pointNumber));
+        return true;
+      }
+
+      if (total === 7) {
+        settleBet(this, "lose", 0);
+        return true;
+      }
+
+      return false;
+    }
+  };
+}
+
+function createDontComeOddsBet(amountCents, pointNumber, parentBetId) {
+  return {
+    id: getNextBetId(),
+    parentBetId: parentBetId ?? null,
+    type: "dontComeOdds",
+    status: "inactive",
+    state: "active",
+    number: pointNumber,
+    amountCents,
+    pointNumber,
+
+    resolve(outcome) {
+      if (this.status !== "active") return false;
+      const total = outcome.total;
+
+      if (total === 7) {
+        settleBet(this, "win", dontComeOddsProfit(this.amountCents, this.pointNumber));
+        return true;
+      }
+
+      if (total === this.pointNumber) {
+        settleBet(this, "lose", 0);
+        return true;
+      }
+
+      return false;
+    }
+  };
+}
+
+function createComePointBet(amountCents, pointNumber, parentBetId) {
+  return {
+    id: getNextBetId(),
+    parentBetId: parentBetId ?? null,
+    type: "comePoint",
+    status: "active",
+    state: "active",
+    number: pointNumber,
+    amountCents,
+
+    resolve(outcome) {
+      if (this.status !== "active") return false;
+      const total = outcome.total;
+
+      if (total === this.number) {
+        console.log(`COME POINT HIT: id=${this.id} number=${this.number}`);
+        settleBet(this, "win", this.amountCents);
+        return true;
+      }
+
+      if (total === 7) {
+        console.log(`COME POINT SEVEN-OUT: id=${this.id} number=${this.number}`);
+        settleBet(this, "lose", 0);
+        return true;
+      }
+
+      return false;
+    }
+  };
+}
+
+function createDontComePointBet(amountCents, pointNumber, parentBetId) {
+  return {
+    id: getNextBetId(),
+    parentBetId: parentBetId ?? null,
+    type: "dontComePoint",
+    status: "active",
+    state: "active",
+    number: pointNumber,
+    amountCents,
+
+    resolve(outcome) {
+      if (this.status !== "active") return false;
+      const total = outcome.total;
+
+      if (total === 7) {
+        console.log(`DON'T COME POINT SEVEN-OUT: id=${this.id} number=${this.number}`);
+        settleBet(this, "win", this.amountCents);
+        return true;
+      }
+
+      if (total === this.number) {
+        console.log(`DON'T COME POINT HIT: id=${this.id} number=${this.number}`);
+        settleBet(this, "lose", 0);
+        return true;
+      }
+
+      return false;
+    }
+  };
+}
+
+function createComeBet(amountCents) {
+  return {
+    id: getNextBetId(),
+    parentBetId: null,
+    type: "come",
+    status: "inactive",
+    state: "pending",
+    number: null,
+    amountCents,
+
+    resolve(outcome) {
+      if (this.status !== "active") return false;
+      const total = outcome.total;
+
+      if (total === 7 || total === 11) {
+        console.log(`COME RESOLVE: id=${this.id} immediate WIN on ${total}`);
+        settleBet(this, "win", this.amountCents);
+        return true;
+      }
+
+      if (total === 2 || total === 3 || total === 12) {
+        console.log(`COME RESOLVE: id=${this.id} immediate LOSE on ${total}`);
+        settleBet(this, "lose", 0);
+        return true;
+      }
+
+      if (isPointNumber(total)) {
+        const traveled = createComePointBet(this.amountCents, total, this.id);
+        gameState.bets.push(traveled);
+        const chipSrc = zoneLastChipSrc.come || selectedChipImgSrc;
+        if (chipSrc) zoneLastChipSrc.comePoint = chipSrc;
+        animateChipTravel({
+          srcZone: zoneCome,
+          destZone: comeTravelZones[total],
+          chipSrc
+        });
+        console.log(`COME TRAVELS: id=${this.id} -> number=${total} (new id=${traveled.id})`);
+        return true;
+      }
+
+      return false;
+    }
+  };
+}
+
+function createDontComeBet(amountCents) {
+  return {
+    id: getNextBetId(),
+    parentBetId: null,
+    type: "dontCome",
+    status: "inactive",
+    state: "pending",
+    number: null,
+    amountCents,
+
+    resolve(outcome) {
+      if (this.status !== "active") return false;
+      const total = outcome.total;
+
+      if (total === 2 || total === 3) {
+        console.log(`DON'T COME RESOLVE: id=${this.id} immediate WIN on ${total}`);
+        settleBet(this, "win", this.amountCents);
+        return true;
+      }
+
+      if (total === 7 || total === 11) {
+        console.log(`DON'T COME RESOLVE: id=${this.id} immediate LOSE on ${total}`);
+        settleBet(this, "lose", 0);
+        return true;
+      }
+
+      if (total === 12) {
+        console.log(`DON'T COME RESOLVE: id=${this.id} PUSH on ${total}`);
+        settleBet(this, "push", 0);
+        return true;
+      }
+
+      if (isPointNumber(total)) {
+        const traveled = createDontComePointBet(this.amountCents, total, this.id);
+        gameState.bets.push(traveled);
+        const chipSrc = zoneLastChipSrc.dontCome || selectedChipImgSrc;
+        if (chipSrc) zoneLastChipSrc.dontComePoint = chipSrc;
+        animateChipTravel({
+          srcZone: zoneDontCome,
+          destZone: dontComeTravelZones[total],
+          chipSrc
+        });
+        console.log(`DON'T COME TRAVELS: id=${this.id} -> number=${total} (new id=${traveled.id})`);
         return true;
       }
 
@@ -1446,6 +2138,16 @@ function refreshUIState() {
   setZoneEnabled(zoneDontPassOdds, isPoint && hasDP && affordChip);
 
   setZoneEnabled(zoneField, affordChip);
+  setZoneEnabled(zoneCome, isPoint && affordChip);
+  setZoneEnabled(zoneDontCome, isPoint && affordChip);
+
+  const numbers = [4, 5, 6, 8, 9, 10];
+  for (const n of numbers) {
+    const hasComePoint = gameState.bets.some(b => b.status === "active" && b.type === "comePoint" && b.number === n);
+    const hasDontComePoint = gameState.bets.some(b => b.status === "active" && b.type === "dontComePoint" && b.number === n);
+    setZoneEnabled(comeOddsZones[n], affordChip && hasComePoint);
+    setZoneEnabled(dontComeOddsZones[n], affordChip && hasDontComePoint);
+  }
 
   // Undo: only usable if we have at least one undo action AND the related bet still exists
   const undoableNow = hasUndoableActionNow();
@@ -1578,7 +2280,7 @@ function uiAddPassOdds() {
     return;
   }
 
-  const oddsBet = createPassOddsBet(chipCents, gameState.point);
+  const oddsBet = createPassOddsBet(chipCents, gameState.point, pass.id);
   if (placeBet(oddsBet, { recordUndo: true })) {
     pass.odds = oddsBet;
     console.log(`PASS ODDS ATTACHED at point=${gameState.point}`);
@@ -1598,7 +2300,7 @@ function uiAddDontPassOdds() {
     return;
   }
 
-  const oddsBet = createDontPassOddsBet(chipCents, gameState.point);
+  const oddsBet = createDontPassOddsBet(chipCents, gameState.point, dp.id);
   if (placeBet(oddsBet, { recordUndo: true })) {
     dp.odds = oddsBet;
     console.log(`DON'T PASS ODDS ATTACHED at point=${gameState.point}`);
@@ -1616,6 +2318,142 @@ function uiPlaceField() {
   }
 
   placeBet(createFieldBet(chipCents), { recordUndo: true });
+}
+
+function uiPlaceCome() {
+  if (gameState.phase !== "point") return;
+
+  const chipCents = getSelectedChipCents();
+  const existingCome = getActiveBet("come");
+
+  if (existingCome) {
+    tryIncrementBetAmount(existingCome, chipCents, { recordUndo: true });
+    return;
+  }
+
+  const bet = createComeBet(chipCents);
+  if (placeBet(bet, { recordUndo: true })) {
+    console.log(`COME PLACED: id=${bet.id} amount=${centsToDollarsString(bet.amountCents)}`);
+  }
+}
+
+function uiPlaceDontCome() {
+  if (gameState.phase !== "point") return;
+
+  const chipCents = getSelectedChipCents();
+  const existingDC = getActiveBet("dontCome");
+
+  if (existingDC) {
+    tryIncrementBetAmount(existingDC, chipCents, { recordUndo: true });
+    return;
+  }
+
+  const bet = createDontComeBet(chipCents);
+  if (placeBet(bet, { recordUndo: true })) {
+    console.log(`DON'T COME PLACED: id=${bet.id} amount=${centsToDollarsString(bet.amountCents)}`);
+  }
+}
+
+function getComePointBetsForNumber(pointNumber) {
+  return gameState.bets.filter(
+    b => b.status === "active" && b.type === "comePoint" && b.number === pointNumber
+  );
+}
+
+function getDontComePointBetsForNumber(pointNumber) {
+  return gameState.bets.filter(
+    b => b.status === "active" && b.type === "dontComePoint" && b.number === pointNumber
+  );
+}
+
+function uiAddComeOdds(pointNumber) {
+  const parents = getComePointBetsForNumber(pointNumber);
+  if (parents.length === 0) return;
+  if (parents.length > 1) {
+    openOddsSelectionModal({ type: "come", pointNumber });
+    return;
+  }
+  const parent = parents[0];
+
+  const chipCents = getSelectedChipCents();
+  const existingOdds = gameState.bets.find(
+    b => b.status === "active" && b.type === "comeOdds" && b.parentBetId === parent.id
+  );
+
+  if (existingOdds) {
+    tryIncrementBetAmount(existingOdds, chipCents, { recordUndo: true });
+    return;
+  }
+
+  const oddsBet = createComeOddsBet(chipCents, pointNumber, parent.id);
+  if (placeBet(oddsBet, { recordUndo: true })) {
+    console.log(`COME ODDS ATTACHED: number=${pointNumber} parent=${parent.id}`);
+  }
+}
+
+function uiAddDontComeOdds(pointNumber) {
+  const parents = getDontComePointBetsForNumber(pointNumber);
+  if (parents.length === 0) return;
+  if (parents.length > 1) {
+    openOddsSelectionModal({ type: "dontCome", pointNumber });
+    return;
+  }
+  const parent = parents[0];
+
+  const chipCents = getSelectedChipCents();
+  const existingOdds = gameState.bets.find(
+    b => b.status === "active" && b.type === "dontComeOdds" && b.parentBetId === parent.id
+  );
+
+  if (existingOdds) {
+    tryIncrementBetAmount(existingOdds, chipCents, { recordUndo: true });
+    return;
+  }
+
+  const oddsBet = createDontComeOddsBet(chipCents, pointNumber, parent.id);
+  if (placeBet(oddsBet, { recordUndo: true })) {
+    console.log(`DON'T COME ODDS ATTACHED: number=${pointNumber} parent=${parent.id}`);
+  }
+}
+
+function getOddsBetForParent(type, parentBetId) {
+  return gameState.bets.find(
+    b =>
+      b.status === "active" &&
+      ((type === "come" && b.type === "comeOdds") ||
+       (type === "dontCome" && b.type === "dontComeOdds")) &&
+      b.parentBetId === parentBetId
+  ) || null;
+}
+
+function applyOddsDelta(type, parentBet, deltaCents) {
+  if (!parentBet || deltaCents === 0) return;
+  const existingOdds = getOddsBetForParent(type, parentBet.id);
+
+  if (deltaCents > 0) {
+    if (!canAfford(deltaCents)) {
+      console.log("Not enough bankroll for odds.");
+      return;
+    }
+    if (existingOdds) {
+      tryIncrementBetAmount(existingOdds, deltaCents, { recordUndo: true });
+    } else {
+      const oddsBet = type === "come"
+        ? createComeOddsBet(deltaCents, parentBet.number, parentBet.id)
+        : createDontComeOddsBet(deltaCents, parentBet.number, parentBet.id);
+      placeBet(oddsBet, { recordUndo: true });
+    }
+  } else {
+    if (!existingOdds) return;
+    const dec = Math.min(existingOdds.amountCents, Math.abs(deltaCents));
+    existingOdds.amountCents -= dec;
+    gameState.bankrollCents += dec;
+    if (existingOdds.amountCents <= 0) {
+      gameState.bets = gameState.bets.filter(b => b !== existingOdds);
+    }
+    renderBankroll();
+    refreshUIState();
+  }
 }
 
 function uiClearAllBets() {
@@ -1765,8 +2603,12 @@ async function rollDice() {
       // Start roll sound immediately on click (important for browser autoplay rules)
   startRollSound();
 
-  // Start a fresh scratchpad for this roll's resolved bet lines
-  gameState._currentOutcomeLines = [];
+ // Start a fresh scratchpad for this roll's NET win/loss
+ gameState._currentRollNetCents = 0;
+ gameState._soundsThisRoll = new Set();
+ gameState._rollSoundFlags = { win: false, lose: false };
+ gameState._rollWinCents = 0;
+ gameState._rollLoseCents = 0;
 
   const prevPhase = gameState.phase;
   const prevPoint = gameState.point;
@@ -1807,10 +2649,33 @@ async function rollDice() {
   saveGameToLocal();
   ensureAutoRefill();
 
-  // Save and display outcome lines for the roll that just resolved
-  gameState.lastOutcomeLines = gameState._currentOutcomeLines || [];
-  gameState._currentOutcomeLines = null;
-  showOutcomeLines(gameState.lastOutcomeLines);
+// Save and display ONE net line for the roll that just resolved
+const net = Number(gameState._currentRollNetCents || 0);
+
+if (net > 0) {
+  const abs = centsToDollarsString(net);
+  gameState.lastOutcomeLines = [`Won: +${abs}`];
+} else if (net < 0) {
+  const abs = centsToDollarsString(Math.abs(net));
+  gameState.lastOutcomeLines = [`Lost: -${abs}`];
+} else {
+  gameState.lastOutcomeLines = [];
+}
+
+showOutcomeLines(gameState.lastOutcomeLines);
+
+  // Play at most one win/lose sound based on aggregate win/loss totals
+  if (gameState._rollWinCents > gameState._rollLoseCents) {
+    playOneShotOncePerRoll(getRandomWinSoundSrc(), 0.3);
+  } else if (gameState._rollLoseCents > gameState._rollWinCents) {
+    playOneShotOncePerRoll(LOSE_SOUND_SRC, 1.0);
+  }
+
+  // Allow non-roll sounds after this roll resolves
+  gameState._soundsThisRoll = null;
+  gameState._rollSoundFlags = null;
+  gameState._rollWinCents = 0;
+  gameState._rollLoseCents = 0;
 
   console.log("--------------------------------------------------");
   console.log("Roll:", gameState.lastRoll);
@@ -1825,9 +2690,16 @@ async function rollDice() {
 -------------------- */
 function init() {
     // Universal tap sound for all button clicks
-  document.addEventListener("click", () => {
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (!t) return;
+    const el = t.closest("button, .betZone, .chipBtn, #hamburgerBtn");
+    if (!el) return;
+    if (el.tagName === "BUTTON" && el.disabled) return;
     playOneShot(TAP_SOUND_SRC, 1.0);
   });
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   if (!CHIP_OPTIONS.includes(selectedChipValue)) {
     selectedChipValue = CHIP_OPTIONS[0];
   }
@@ -1881,6 +2753,40 @@ if (zoneField) zoneField.addEventListener("click", () => {
   uiPlaceField();
 });
 
+if (zoneCome) zoneCome.addEventListener("click", () => {
+  hideZoneTotals = false;
+  zoneLastChipSrc.come = selectedChipImgSrc;
+  uiPlaceCome();
+});
+
+if (zoneDontCome) zoneDontCome.addEventListener("click", () => {
+  hideZoneTotals = false;
+  zoneLastChipSrc.dontCome = selectedChipImgSrc;
+  uiPlaceDontCome();
+});
+
+const oddsNumbers = [4, 5, 6, 8, 9, 10];
+for (const n of oddsNumbers) {
+  const cz = comeOddsZones[n];
+  const dcz = dontComeOddsZones[n];
+
+  if (cz) {
+    cz.addEventListener("click", () => {
+      hideZoneTotals = false;
+      zoneLastChipSrc.comePoint = selectedChipImgSrc;
+      uiAddComeOdds(n);
+    });
+  }
+
+  if (dcz) {
+    dcz.addEventListener("click", () => {
+      hideZoneTotals = false;
+      zoneLastChipSrc.dontComePoint = selectedChipImgSrc;
+      uiAddDontComeOdds(n);
+    });
+  }
+}
+
 
   if (undoLastBtn) undoLastBtn.addEventListener("click", uiUndoLastExtras);
   if (clearAllBetsBtn) clearAllBetsBtn.addEventListener("click", uiClearAllBets);
@@ -1899,6 +2805,78 @@ if (zoneField) zoneField.addEventListener("click", () => {
   if (importSaveBtn) importSaveBtn.addEventListener("click", uiStartImport);
   if (importFileInput) importFileInput.addEventListener("change", uiHandleImportFile);
 
+  if (oddsModalCloseEl) oddsModalCloseEl.addEventListener("click", closeOddsModal);
+  if (oddsModalEl) {
+    oddsModalEl.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t && t.dataset && t.dataset.close === "true") closeOddsModal();
+    });
+  }
+
+  if (oddsModalIncrementsEl) {
+    oddsModalIncrementsEl.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!t || !t.classList || !t.classList.contains("incBtn")) return;
+      const raw = t.dataset.inc;
+      if (!raw) return;
+      if (raw === "ALL") {
+        oddsModalState.selectedInc = { mode: "ALL", cents: 0 };
+      } else {
+        const dollars = Number(raw);
+        if (!Number.isFinite(dollars)) return;
+        oddsModalState.selectedInc = { mode: "fixed", cents: dollarsToCents(dollars) };
+      }
+      const btns = oddsModalIncrementsEl.querySelectorAll(".incBtn");
+      btns.forEach(b => b.classList.toggle("selected", b === t));
+    });
+  }
+
+  if (oddsModalRowsEl) {
+    oddsModalRowsEl.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!t || !t.dataset || !t.dataset.betId) return;
+      const betId = Number(t.dataset.betId);
+      if (!Number.isFinite(betId)) return;
+      if (!oddsModalState.open) return;
+
+      const type = oddsModalState.type;
+      const parentBet = gameState.bets.find(b => b.id === betId);
+      if (!parentBet) return;
+
+      const sel = oddsModalState.selectedInc;
+      if (!sel) return;
+
+      const existingOdds = getOddsBetForParent(type, parentBet.id);
+      let incCents = 0;
+
+      if (sel.mode === "ALL") {
+        if (t.classList.contains("oddsPlus")) {
+          incCents = gameState.bankrollCents;
+        } else if (t.classList.contains("oddsMinus")) {
+          incCents = existingOdds ? existingOdds.amountCents : 0;
+        }
+      } else {
+        incCents = sel.cents;
+      }
+
+      if (!incCents || incCents <= 0) return;
+
+      if (t.classList.contains("oddsPlus")) {
+        applyOddsDelta(type, parentBet, incCents);
+      } else if (t.classList.contains("oddsMinus")) {
+        applyOddsDelta(type, parentBet, -incCents);
+      } else {
+        return;
+      }
+
+      const isCome = type === "come";
+      const pointNumber = oddsModalState.pointNumber;
+      if (pointNumber) {
+        openOddsSelectionModal({ type: isCome ? "come" : "dontCome", pointNumber });
+      }
+    });
+  }
+
 
   loadGameFromLocal();
   renderPhase();
@@ -1909,8 +2887,38 @@ if (zoneField) zoneField.addEventListener("click", () => {
   updateChipButtonStyles();
   refreshUIState();
   clearOutcomeLines();
+  startTravelCycler();
 
   console.log(`START BANKROLL: ${centsToDollarsString(gameState.bankrollCents)}`);
 }
 
 init();
+
+// Debug helpers (console use only)
+window.debugForceComePoints = (num, count = 2, amountCents = 500) => {
+  if (!isPointNumber(num)) {
+    console.log(`debugForceComePoints: invalid number ${num}`);
+    return;
+  }
+  for (let i = 0; i < count; i++) {
+    const bet = createComePointBet(amountCents, num, null);
+    gameState.bets.push(bet);
+  }
+  renderTableBetDisplays();
+  refreshUIState();
+  console.log(`FORCED ${count} comePoint bets on ${num} for ${centsToDollarsString(amountCents)}`);
+};
+
+window.debugForceDontComePoints = (num, count = 2, amountCents = 500) => {
+  if (!isPointNumber(num)) {
+    console.log(`debugForceDontComePoints: invalid number ${num}`);
+    return;
+  }
+  for (let i = 0; i < count; i++) {
+    const bet = createDontComePointBet(amountCents, num, null);
+    gameState.bets.push(bet);
+  }
+  renderTableBetDisplays();
+  refreshUIState();
+  console.log(`FORCED ${count} dontComePoint bets on ${num} for ${centsToDollarsString(amountCents)}`);
+};

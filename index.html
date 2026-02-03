@@ -42,6 +42,8 @@
     id="piggyImage"
     src="assets/piggy bank/piggybank1.webp"
     alt="Piggybank"
+    loading="lazy"
+    decoding="async"
   />
 
   <div id="piggybankDisplay"></div>
@@ -59,23 +61,23 @@
   <div id="chipSelector">
     <span>Select Chip:</span>
 <button class="chipBtn" data-value="1" aria-label="$1">
-  <img src="assets/chippies/1.webp" alt="$1 chip" />
+  <img src="assets/chippies/1.webp" alt="$1 chip" loading="lazy" decoding="async" />
 </button>
 
 <button class="chipBtn" data-value="5" aria-label="$5">
-  <img src="assets/chippies/5.webp" alt="$5 chip" />
+  <img src="assets/chippies/5.webp" alt="$5 chip" loading="lazy" decoding="async" />
 </button>
 
 <button class="chipBtn" data-value="10" aria-label="$10">
-  <img src="assets/chippies/10.webp" alt="$10 chip" />
+  <img src="assets/chippies/10.webp" alt="$10 chip" loading="lazy" decoding="async" />
 </button>
 
 <button class="chipBtn" data-value="25" aria-label="$25">
-  <img src="assets/chippies/25.webp" alt="$25 chip" />
+  <img src="assets/chippies/25.webp" alt="$25 chip" loading="lazy" decoding="async" />
 </button>
 
 <button class="chipBtn" data-value="ALL" aria-label="All chips">
-  <img src="assets/chippies/all.webp" alt="All chips" />
+  <img src="assets/chippies/all.webp" alt="All chips" loading="lazy" decoding="async" />
 </button>
   </div>
 
@@ -107,6 +109,9 @@
   id="tableGraphic"
   src="assets/background/table.webp"
   alt="Craps table"
+  loading="eager"
+  decoding="async"
+  fetchpriority="high"
 />
 
 
@@ -140,6 +145,168 @@
     </div>
   </div>
 
+  <div class="betZone" id="zoneCome" title="Come">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div class="betZone" id="zoneDontCome" title="Don't Come">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div class="betZone" id="zoneComeOdds4" title="Come Odds 4" data-label="CO4">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneComeOdds5" title="Come Odds 5" data-label="CO5">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneComeOdds6" title="Come Odds 6" data-label="CO6">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneComeOdds8" title="Come Odds 8" data-label="CO8">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneComeOdds9" title="Come Odds 9" data-label="CO9">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneComeOdds10" title="Come Odds 10" data-label="CO10">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div class="betZone travelZone" id="zoneDontCome4" title="Don't Come 4" data-label="DC4">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneDontCome5" title="Don't Come 5" data-label="DC5">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneDontCome6" title="Don't Come 6" data-label="DC6">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneDontCome8" title="Don't Come 8" data-label="DC8">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneDontCome9" title="Don't Come 9" data-label="DC9">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneDontCome10" title="Don't Come 10" data-label="DC10">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div class="betZone travelZone" id="zoneCome4" title="Come 4" data-label="C4">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneCome5" title="Come 5" data-label="C5">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneCome6" title="Come 6" data-label="C6">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneCome8" title="Come 8" data-label="C8">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneCome9" title="Come 9" data-label="C9">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone travelZone" id="zoneCome10" title="Come 10" data-label="C10">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
+  <div class="betZone" id="zoneDontComeOdds4" title="Don't Come Odds 4" data-label="DCO4">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneDontComeOdds5" title="Don't Come Odds 5" data-label="DCO5">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneDontComeOdds6" title="Don't Come Odds 6" data-label="DCO6">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneDontComeOdds8" title="Don't Come Odds 8" data-label="DCO8">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneDontComeOdds9" title="Don't Come Odds 9" data-label="DCO9">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+  <div class="betZone" id="zoneDontComeOdds10" title="Don't Come Odds 10" data-label="DCO10">
+    <div class="zoneBetDisplay">
+      <img class="zoneChip" alt="" />
+      <div class="zoneTotal"></div>
+    </div>
+  </div>
+
   <div class="betZone" id="zoneField" title="Field">
     <div class="zoneBetDisplay">
       <img class="zoneChip" alt="" />
@@ -159,11 +326,35 @@
 </div>
 </div>
 
+<!-- Floating chips (screen-space travel animations) -->
+<div id="floatingChipsLayer"></div>
+
+<!-- Odds selection modal (multi-bet odds) -->
+<div id="oddsModal" class="modal hidden" aria-hidden="true">
+  <div class="modalBackdrop" data-close="true"></div>
+  <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="oddsModalTitle">
+    <button id="oddsModalClose" class="modalClose" aria-label="Close">X</button>
+    <div id="oddsModalTitle" class="modalTitle">Bet Info</div>
+    <div id="oddsModalIncrements" class="modalIncrements">
+      <button class="incBtn" data-inc="1">1</button>
+      <button class="incBtn" data-inc="5">5</button>
+      <button class="incBtn" data-inc="10">10</button>
+      <button class="incBtn" data-inc="25">25</button>
+      <button class="incBtn" data-inc="ALL">ALL</button>
+    </div>
+    <div id="oddsModalRows" class="modalRows">
+      <!-- rows injected later -->
+    </div>
+  </div>
+</div>
+
 <!-- PUCK (OFF/ON) -->
 <img
   id="puck"
   src="assets/puck/off.webp"
   alt="Puck"
+  loading="eager"
+  decoding="async"
 />
 
 <div id="dice">
