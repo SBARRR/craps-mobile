@@ -2153,8 +2153,14 @@ function refreshUIState() {
   const undoableNow = hasUndoableActionNow();
   setButtonEnabled(undoLastBtn, undoableNow);
 
-  // Clear ALL: only if any bets exist
-  setButtonEnabled(clearAllBetsBtn, gameState.bets.length > 0);
+  // Clear Line: only if any line or line-odds bets exist
+  setButtonEnabled(
+    clearAllBetsBtn,
+    hasActiveBet("passLine") ||
+      hasActiveBet("dontPass") ||
+      hasActiveBet("passOdds") ||
+      hasActiveBet("dontPassOdds")
+  );
 
     // Piggybank: disabled while any bets are active
   const betsActive = gameState.bets.length > 0;
@@ -2456,20 +2462,28 @@ function applyOddsDelta(type, parentBet, deltaCents) {
   }
 }
 
-function uiClearAllBets() {
+function uiClearLineBets() {
   let refunded = 0;
+  const lineTypes = new Set(["passLine", "dontPass", "passOdds", "dontPassOdds"]);
 
+  const remaining = [];
   for (const bet of gameState.bets) {
-    if (bet.status === "active") {
+    if (bet.status !== "active") {
+      remaining.push(bet);
+      continue;
+    }
+    if (lineTypes.has(bet.type)) {
       gameState.bankrollCents += bet.amountCents;
       refunded += bet.amountCents;
+      continue;
     }
+    remaining.push(bet);
   }
 
-  gameState.bets = [];
+  gameState.bets = remaining;
   gameState.undoStack = []; // clear undo history too
 
-  console.log(`CLEARED ALL BETS: refunded ${centsToDollarsString(refunded)}`);
+  console.log(`CLEARED LINE BETS: refunded ${centsToDollarsString(refunded)}`);
   renderBankroll();
   refreshUIState();
 }
@@ -2789,7 +2803,7 @@ for (const n of oddsNumbers) {
 
 
   if (undoLastBtn) undoLastBtn.addEventListener("click", uiUndoLastExtras);
-  if (clearAllBetsBtn) clearAllBetsBtn.addEventListener("click", uiClearAllBets);
+if (clearAllBetsBtn) clearAllBetsBtn.addEventListener("click", uiClearLineBets);
 
   if (rollButton) {
   rollButton.addEventListener("click", () => {
