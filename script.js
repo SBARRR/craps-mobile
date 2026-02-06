@@ -261,6 +261,7 @@ const netTrackerDisplayEl = document.getElementById("netTrackerDisplay");
 const exportSaveBtn = document.getElementById("exportSaveBtn");
 const importSaveBtn = document.getElementById("importSaveBtn");
 const importFileInput = document.getElementById("importFileInput");
+const clearSaveBtn = document.getElementById("clearSaveBtn");
 
 // ---- MOVE PIGGY + SAVE INTO DRAWER ON COMPACT SCREENS ----
 const navToggleEl = document.getElementById("navToggle");
@@ -344,19 +345,23 @@ function isCompactLayout() {
 function updateDrawerPlacements() {
   if (!drawerPiggySlotEl || !drawerSaveSlotEl || !piggySectionEl || !saveControlsEl) return;
 
-  if (isCompactLayout()) {
-    drawerPiggySlotEl.appendChild(piggySectionEl);
+  // Always place save controls into the drawer (they should live there at all breakpoints)
+  if (drawerSaveSlotEl && saveControlsEl && saveControlsEl.parentNode !== drawerSaveSlotEl) {
     drawerSaveSlotEl.appendChild(saveControlsEl);
+  }
+
+  // Piggy section only moves into drawer on compact layouts (keeps behavior unchanged)
+  if (isCompactLayout()) {
+    if (drawerPiggySlotEl && piggySectionEl && piggySectionEl.parentNode !== drawerPiggySlotEl) {
+      drawerPiggySlotEl.appendChild(piggySectionEl);
+    }
   } else {
     // close drawer if you leave compact mode
     if (navToggleEl) navToggleEl.checked = false;
 
-    // restore to original spot
-    if (piggyHomeMarker.parentNode) {
+    // restore piggy to its original spot if needed
+    if (piggyHomeMarker.parentNode && piggySectionEl.parentNode !== piggyHomeMarker.parentNode) {
       piggyHomeMarker.parentNode.insertBefore(piggySectionEl, piggyHomeMarker.nextSibling);
-    }
-    if (saveHomeMarker.parentNode) {
-      saveHomeMarker.parentNode.insertBefore(saveControlsEl, saveHomeMarker.nextSibling);
     }
   }
 }
@@ -2604,6 +2609,15 @@ function uiHandleImportFile(event) {
 /* --------------------
    ROLL HANDLER
 -------------------- */
+function uiClearSave() {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+    console.log("Save cleared from localStorage.");
+  } catch (e) {
+    console.warn("Failed to clear save:", e);
+  }
+}
+
 async function rollDice() {
     // NEW TIMING RULE:
   // Clear outcome lines when Roll Dice is clicked (before new roll happens)
@@ -2817,6 +2831,7 @@ if (clearAllBetsBtn) clearAllBetsBtn.addEventListener("click", uiClearLineBets);
 
   if (exportSaveBtn) exportSaveBtn.addEventListener("click", uiExportSave);
   if (importSaveBtn) importSaveBtn.addEventListener("click", uiStartImport);
+  if (clearSaveBtn) clearSaveBtn.addEventListener("click", uiClearSave);
   if (importFileInput) importFileInput.addEventListener("change", uiHandleImportFile);
 
   if (oddsModalCloseEl) oddsModalCloseEl.addEventListener("click", closeOddsModal);

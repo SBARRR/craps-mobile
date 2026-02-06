@@ -1652,7 +1652,8 @@ button:not(#rollButton):disabled {
 /* ---------- Bottom-right save/import ---------- */
 #saveControls,
 #exportBtn,
-#importBtn {
+#importBtn,
+#clearSaveBtn {
   font-size: var(--ui-font-small);
   padding: clamp(6px, 0.8vw, 10px) clamp(10px, 1.2vw, 16px);
 }
@@ -1691,7 +1692,7 @@ button:not(#rollButton):disabled {
 /* =========================
    COMPACT BOTTOM UI (1280×800-ish)
    ========================= */
-@media (max-width: 1300px), (max-height: 820px) {
+@media (max-width: 1300px) {
 
   /* --- bottom-left piggy area: shrink as a unit --- */
   #piggySection{
@@ -2040,7 +2041,7 @@ button:not(#rollButton):disabled {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  display: none;              /* shown only at 1280-ish */
+  display: flex;              /* always visible */
   align-items: center;
   justify-content: center;
   background: rgba(0,0,0,0.55);
@@ -2070,7 +2071,7 @@ button:not(#rollButton):disabled {
   overflow-y: auto;
   padding: 70px 14px 14px;
   box-sizing: border-box;
-  display: none;              /* shown only at 1280-ish */
+  display: flex;              /* drawer visible at all sizes */
 }
 
 #navToggle:checked ~ #sideDrawer{
@@ -2108,6 +2109,14 @@ button:not(#rollButton):disabled {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+/* Ensure save controls display nicely when placed inside the drawer (applies at all sizes) */
+#sideDrawer #saveControls{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
 }
 
 @media (max-width: 1300px), (max-height: 820px){
