@@ -1990,7 +1990,7 @@ button:not(#rollButton):disabled {
   z-index: 9998;
   transform: translateX(100%);
   transition: transform 220ms ease-out;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   padding: 70px 14px 14px;
   box-sizing: border-box;
@@ -2033,6 +2033,8 @@ button:not(#rollButton):disabled {
   flex-direction: column;
   gap: 14px;
   align-items: stretch;
+  flex: 1 1 auto;
+  height: 100%;
 }
 
 /* Make the drawer content scrollable and enable native touch scrolling on mobile */
@@ -2095,7 +2097,7 @@ button:not(#rollButton):disabled {
 #drawerFeedbackSlot{
   width: 100%;
   min-width: 0;
-  margin-top: auto;
+  margin-top: 0;
   padding-top: 8px;
 }
 
@@ -2150,7 +2152,7 @@ button:not(#rollButton):disabled {
 #outcomeSummaryModal{
   position: fixed;
   inset: 0;
-  z-index: 35;
+  z-index: 10030;
 }
 
 #outcomeSummaryModal .modalCard{
@@ -2239,7 +2241,7 @@ button:not(#rollButton):disabled {
 #welcomeModal{
   position: fixed;
   inset: 0;
-  z-index: 36;
+  z-index: 10040;
 }
 
 #welcomeModal .modalCard{
@@ -2321,7 +2323,7 @@ button:not(#rollButton):disabled {
 #feedbackModal{
   position: fixed;
   inset: 0;
-  z-index: 37;
+  z-index: 10050;
 }
 
 #feedbackModal .modalCard{
