@@ -1984,7 +1984,7 @@ button:not(#rollButton):disabled {
   position: fixed;
   top: 0;
   right: 0;
-  height: 100vh;
+  height: 100dvh;
   width: clamp(260px, 32vw, 360px);
   background: rgba(0,0,0,0.92);
   z-index: 9998;
@@ -2039,16 +2039,15 @@ button:not(#rollButton):disabled {
 
 /* Make the drawer content scrollable and enable native touch scrolling on mobile */
 #sideDrawer{
-  -webkit-overflow-scrolling: touch; /* smooth momentum scrolling on iOS */
-  overscroll-behavior: contain;     /* prevent scroll chaining to background */
-  touch-action: pan-y;              /* allow vertical panning inside drawer */
+  overscroll-behavior: contain;
 }
 
 #sideDrawer .drawerInner{
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  max-height: calc(100vh - 84px);
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   min-height: 0;
   box-sizing: border-box;
   padding: 0 12px 20px; /* side padding + bottom breathing room */

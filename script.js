@@ -624,20 +624,44 @@ function updateDrawerPlacements() {
   }
   schedulePiggyButtonTextFit();
 }
-  // Prevent background page from scrolling when the drawer is open on touch devices
-  if (navToggleEl) {
-    navToggleEl.addEventListener('change', () => {
-      try {
-        if (navToggleEl.checked) {
-          document.body.style.overflow = 'hidden';
-        } else {
-          document.body.style.overflow = '';
-        }
-      } catch (e) {
-        // ignore
+let lockedScrollY = 0;
+
+function lockPageScroll() {
+  const body = document.body;
+  lockedScrollY = window.scrollY || window.pageYOffset || 0;
+  body.style.position = "fixed";
+  body.style.top = `-${lockedScrollY}px`;
+  body.style.left = "0";
+  body.style.right = "0";
+  body.style.width = "100%";
+  body.style.overflow = "hidden";
+}
+
+function unlockPageScroll() {
+  const body = document.body;
+  body.style.position = "";
+  body.style.top = "";
+  body.style.left = "";
+  body.style.right = "";
+  body.style.width = "";
+  body.style.overflow = "";
+  window.scrollTo(0, lockedScrollY);
+}
+
+// Prevent background page from scrolling when the drawer is open on touch devices
+if (navToggleEl) {
+  navToggleEl.addEventListener("change", () => {
+    try {
+      if (navToggleEl.checked) {
+        lockPageScroll();
+      } else {
+        unlockPageScroll();
       }
-    });
-  }
+    } catch (e) {
+      // ignore
+    }
+  });
+}
 
 window.addEventListener("resize", updateDrawerPlacements);
 window.addEventListener("orientationchange", updateDrawerPlacements);
