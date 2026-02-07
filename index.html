@@ -18,8 +18,27 @@
 
 <aside id="sideDrawer" aria-label="Menu drawer">
   <div class="drawerInner">
+    <div id="drawerSummarySlot">
+      <button id="openOutcomeSummaryBtn">Outcome Summary</button>
+    </div>
     <div id="drawerPiggySlot"></div>
     <div id="drawerSaveSlot"></div>
+    <div id="drawerVolumeSection" aria-label="Audio controls">
+      <div class="drawerSectionTitle">Audio</div>
+      <div class="volumeRow">
+        <label for="bgmVolumeRange">Music</label>
+        <input id="bgmVolumeRange" type="range" min="0" max="100" step="1" value="50" />
+        <span id="bgmVolumeValue">50%</span>
+      </div>
+      <div class="volumeRow">
+        <label for="sfxVolumeRange">SFX</label>
+        <input id="sfxVolumeRange" type="range" min="0" max="100" step="1" value="100" />
+        <span id="sfxVolumeValue">100%</span>
+      </div>
+    </div>
+    <div id="drawerFeedbackSlot">
+      <button id="openFeedbackBtn">Feedback</button>
+    </div>
   </div>
 </aside>
 
@@ -346,6 +365,81 @@
     <div id="oddsModalRows" class="modalRows">
       <!-- rows injected later -->
     </div>
+  </div>
+</div>
+
+<!-- Outcome summary modal -->
+<div id="outcomeSummaryModal" class="modal hidden" aria-hidden="true">
+  <div class="modalBackdrop" data-close-outcome="true"></div>
+  <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="outcomeSummaryTitle">
+    <button id="outcomeSummaryClose" class="modalClose" aria-label="Close">X</button>
+    <div id="outcomeSummaryTitle" class="modalTitle">Outcome Summary</div>
+    <div id="outcomeSummaryControls" class="modalIncrements">
+      <label for="outcomeSummaryCount">Show</label>
+      <select id="outcomeSummaryCount" aria-label="Number of recent outcomes">
+        <option value="10">10</option>
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+      <span>recent</span>
+    </div>
+    <div id="outcomeSummaryBody"></div>
+  </div>
+</div>
+
+<!-- Welcome modal -->
+<div id="welcomeModal" class="modal hidden" aria-hidden="true">
+  <div class="modalBackdrop" data-close-welcome="true"></div>
+  <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+    <button id="welcomeModalClose" class="modalClose" aria-label="Close">X</button>
+    <div id="welcomeTitle" class="modalTitle">Welcome to Craps on Web</div>
+    <div id="welcomeBody" class="welcomeBody">
+      <p>This is a browser-based craps game built to help you learn, practice, and test strategies at your own pace.</p>
+      <p>Outcomes follow standard casino craps rules.</p>
+      <p><strong class="welcomeEmphasis">Not all bets are available yet.</strong> The following bets are currently supported:</p>
+      <ul>
+        <li>Pass Line / Don't Pass (including odds)</li>
+        <li>Come / Don't Come (including odds)</li>
+        <li>Field bets</li>
+      </ul>
+      <p>Additional bets and features will be added over time.</p>
+      <p>Use the menu button (☰) on the right side of the screen to access settings and other features.</p>
+    </div>
+    <label id="welcomeDontShowRow" for="welcomeDontShowAgain">
+      <input id="welcomeDontShowAgain" type="checkbox" />
+      <span>Don't show this message again</span>
+    </label>
+  </div>
+</div>
+
+<!-- Feedback modal -->
+<div id="feedbackModal" class="modal hidden" aria-hidden="true">
+  <div class="modalBackdrop" data-close-feedback="true"></div>
+  <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle">
+    <button id="feedbackModalClose" class="modalClose" aria-label="Close">X</button>
+    <div id="feedbackTitle" class="modalTitle">Feedback</div>
+    <form
+      id="feedbackForm"
+      action="https://formsubmit.co/crapsonweb@yahoo.com"
+      method="POST"
+    >
+      <input type="hidden" name="_subject" value="Craps on Web Feedback" />
+      <input type="hidden" name="_template" value="table" />
+      <input type="hidden" name="_captcha" value="false" />
+      <input type="hidden" name="_next" id="feedbackNextUrl" value="" />
+
+      <label for="feedbackName">Name (optional)</label>
+      <input id="feedbackName" type="text" name="name" autocomplete="name" />
+
+      <label for="feedbackEmail">Email (optional)</label>
+      <input id="feedbackEmail" type="email" name="email" autocomplete="email" />
+
+      <label for="feedbackComment">Comment (required)</label>
+      <textarea id="feedbackComment" name="comment" rows="6" required></textarea>
+
+      <button type="submit" id="feedbackSubmitBtn">Send Feedback</button>
+    </form>
   </div>
 </div>
 

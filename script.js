@@ -24,6 +24,13 @@ const PUCK_ON_SRC  = "assets/puck/on.webp";
 const BGM_SRC = "assets/bgm/bgm.mp3";
 let bgmAudio = null;
 let bgmWasPlaying = false;
+const AUDIO_PREFS_KEY = "crapsAudioPrefsV1";
+const DEFAULT_BGM_VOLUME = 0.5;
+const DEFAULT_SFX_VOLUME = 1.0;
+const ROLL_BASE_VOLUME = 1.0;
+
+let bgmVolume = DEFAULT_BGM_VOLUME;
+let sfxVolume = DEFAULT_SFX_VOLUME;
 
 // UI click / tap
 const TAP_SOUND_SRC = "assets/tap sound/tap.mp3";
@@ -42,7 +49,7 @@ const LOSE_SOUND_SRC = "assets/winorlose/lose.mp3";
 
 function playOneShot(src, volume = 1.0) {
   const a = new Audio(src);
-  a.volume = volume;
+  a.volume = clamp01(volume * sfxVolume);
   a.preload = "auto";
   try {
     a.currentTime = 0;
@@ -69,7 +76,7 @@ function ensureBgm() {
   if (bgmAudio) return bgmAudio;
   bgmAudio = new Audio(BGM_SRC);
   bgmAudio.loop = true;
-  bgmAudio.volume = 0.50; // LOWER than everything else
+  bgmAudio.volume = clamp01(bgmVolume);
   bgmAudio.preload = "auto";
   return bgmAudio;
 }
@@ -104,6 +111,7 @@ const ROLL_SOUND_SOURCES = [
 ];
 let rollAudio = null;
 let rollAudioSrc = null;
+const MAX_OUTCOME_HISTORY_LINES = 500;
 
 function ensureRollAudio(src) {
   if (rollAudio && rollAudioSrc === src) return rollAudio;
@@ -111,6 +119,7 @@ function ensureRollAudio(src) {
   rollAudioSrc = src;
   rollAudio.loop = true;      // keep playing until we explicitly stop it
   rollAudio.preload = "auto"; // try to load early
+  rollAudio.volume = clamp01(ROLL_BASE_VOLUME * sfxVolume);
   return rollAudio;
 }
 
@@ -118,10 +127,241 @@ function startRollSound() {
   const src = ROLL_SOUND_SOURCES[Math.floor(Math.random() * ROLL_SOUND_SOURCES.length)];
   const a = ensureRollAudio(src);
   try {
+    a.volume = clamp01(ROLL_BASE_VOLUME * sfxVolume);
     a.currentTime = 0;
     const p = a.play(); // must be triggered by the user's click
     if (p && typeof p.catch === "function") p.catch(() => {});
   } catch {}
+}
+
+function clamp01(value) {
+  if (!Number.isFinite(value)) return 0;
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+function saveAudioPrefsToLocal() {
+  try {
+    localStorage.setItem(
+      AUDIO_PREFS_KEY,
+      JSON.stringify({
+        bgmVolume,
+        sfxVolume
+      })
+    );
+  } catch {}
+}
+
+function loadAudioPrefsFromLocal() {
+  try {
+    const raw = localStorage.getItem(AUDIO_PREFS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      if (typeof parsed.bgmVolume === "number") bgmVolume = clamp01(parsed.bgmVolume);
+      if (typeof parsed.sfxVolume === "number") sfxVolume = clamp01(parsed.sfxVolume);
+    }
+  } catch {}
+}
+
+function setBgmVolume(value01) {
+  bgmVolume = clamp01(value01);
+  if (bgmAudio) bgmAudio.volume = bgmVolume;
+  saveAudioPrefsToLocal();
+}
+
+function setSfxVolume(value01) {
+  sfxVolume = clamp01(value01);
+  if (rollAudio) rollAudio.volume = clamp01(ROLL_BASE_VOLUME * sfxVolume);
+  saveAudioPrefsToLocal();
+}
+
+function updateAudioControlsUI() {
+  const bgmPct = Math.round(bgmVolume * 100);
+  const sfxPct = Math.round(sfxVolume * 100);
+
+  if (bgmVolumeRangeEl) bgmVolumeRangeEl.value = String(bgmPct);
+  if (sfxVolumeRangeEl) sfxVolumeRangeEl.value = String(sfxPct);
+  if (bgmVolumeValueEl) bgmVolumeValueEl.textContent = `${bgmPct}%`;
+  if (sfxVolumeValueEl) sfxVolumeValueEl.textContent = `${sfxPct}%`;
+}
+
+function formatWagerAmount(cents) {
+  const s = centsToDollarsString(cents);
+  return s.endsWith(".00") ? s.slice(0, -3) : s;
+}
+
+function formatNetAmount(cents) {
+  if (!cents) return "$0";
+  const abs = Math.abs(cents);
+  const amount = formatWagerAmount(abs);
+  return cents > 0 ? `+${amount}` : `-${amount}`;
+}
+
+function getBetLabelForSummary(type) {
+  switch (type) {
+    case "passLine": return "Pass Line";
+    case "dontPass": return "Don't Pass";
+    case "passOdds": return "Pass Odds";
+    case "dontPassOdds": return "Don't Pass Odds";
+    case "field": return "Field";
+    case "come": return "Come";
+    case "dontCome": return "Don't Come";
+    case "comePoint": return "Come";
+    case "dontComePoint": return "Don't Come";
+    case "comeOdds": return "Come Odds";
+    case "dontComeOdds": return "Don't Come Odds";
+    default: return type;
+  }
+}
+
+function recordPointSetForSummary(bet, pointNumber) {
+  if (!Array.isArray(gameState._currentRollPointSets)) return;
+  if (!Number.isFinite(pointNumber)) return;
+
+  gameState._currentRollPointSets.push({
+    betId: bet.id,
+    betType: bet.type,
+    wagerCents: bet.amountCents,
+    pointNumber
+  });
+}
+
+function appendOutcomeSummaryForRoll({ die1, die2, total }) {
+  if (!gameState.recentOutcomeLines) gameState.recentOutcomeLines = [];
+
+  const rollPrefix = `Roll: ${total} (${die1}-${die2})`;
+  const settlements = Array.isArray(gameState._currentRollSettlements)
+    ? gameState._currentRollSettlements
+    : [];
+  const pointSets = Array.isArray(gameState._currentRollPointSets)
+    ? gameState._currentRollPointSets
+    : [];
+
+  if (settlements.length === 0 && pointSets.length === 0) {
+    gameState.recentOutcomeLines.push(rollPrefix);
+  } else {
+    for (const s of settlements) {
+      const resultWord = s.result === "win" ? "WIN" : (s.result === "lose" ? "LOSE" : "PUSH");
+      const netText = s.result === "push" ? "$0" : formatNetAmount(s.netCents);
+      const pointText = Number.isFinite(s.pointNumber) ? ` (Point ${s.pointNumber})` : "";
+      const line =
+        `${rollPrefix} - Bet: ${getBetLabelForSummary(s.betType)}${pointText} - ` +
+        `Wager: ${formatWagerAmount(s.wagerCents)} - ${resultWord} ${netText}`;
+      gameState.recentOutcomeLines.push(line);
+    }
+
+    for (const p of pointSets) {
+      const line =
+        `${rollPrefix} - Bet: ${getBetLabelForSummary(p.betType)} - ` +
+        `Wager: ${formatWagerAmount(p.wagerCents)} - Point Set (${p.pointNumber})`;
+      gameState.recentOutcomeLines.push(line);
+    }
+  }
+
+  if (gameState.recentOutcomeLines.length > MAX_OUTCOME_HISTORY_LINES) {
+    gameState.recentOutcomeLines = gameState.recentOutcomeLines.slice(-MAX_OUTCOME_HISTORY_LINES);
+  }
+}
+
+function renderOutcomeSummaryBody() {
+  if (!outcomeSummaryBodyEl) return;
+  const count = Math.max(1, Number(outcomeSummaryCountEl?.value || 25));
+  const all = Array.isArray(gameState.recentOutcomeLines) ? gameState.recentOutcomeLines : [];
+  const lines = all.slice(-count);
+  if (lines.length === 0) {
+    outcomeSummaryBodyEl.innerHTML = `<div class="summaryLine"><span class="summaryWhite">No outcomes yet.</span></div>`;
+    return;
+  }
+  outcomeSummaryBodyEl.innerHTML = lines.map(renderOutcomeSummaryLineHtml).join("");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderOutcomeSummaryLineHtml(line) {
+  const text = String(line || "");
+  const fullRegex = /^Roll:\s*\d+\s*\(\d+-\d+\)\s-\sBet:\s(.+?)\s-\sWager:\s(\$[^\s]+)\s-\s(.+)$/;
+  const m = text.match(fullRegex);
+
+  if (!m) {
+    return `<div class="summaryLine"><span class="summaryWhite">${escapeHtml(text)}</span></div>`;
+  }
+
+  const rollPart = text.slice(0, text.indexOf(" - Bet:"));
+  const betWithMaybePoint = m[1];
+  const wager = m[2];
+  const tail = m[3];
+
+  const betPointMatch = betWithMaybePoint.match(/^(.*?)(\s\(Point\s\d+\))?$/);
+  const betName = betPointMatch ? betPointMatch[1] : betWithMaybePoint;
+  const pointSuffix = (betPointMatch && betPointMatch[2]) ? betPointMatch[2] : "";
+
+  let tailClass = "summaryWhite";
+  if (/^WIN\s/.test(tail)) tailClass = "summaryGreen";
+  else if (/^LOSE\s/.test(tail)) tailClass = "summaryRed";
+  else if (/^Point Set\s\(\d+\)$/.test(tail)) tailClass = "summaryBlue";
+
+  const betHtml =
+    `<span class="summaryYellow">Bet: ${escapeHtml(betName)}</span>` +
+    (pointSuffix ? `<span class="summaryBlue">${escapeHtml(pointSuffix)}</span>` : "");
+
+  return (
+    `<div class="summaryLine">` +
+      `<span class="summaryWhite">${escapeHtml(rollPart)}</span>` +
+      `<span class="summaryWhite"> - </span>` +
+      betHtml +
+      `<span class="summaryWhite"> - </span>` +
+      `<span class="summaryYellow">Wager: ${escapeHtml(wager)}</span>` +
+      `<span class="summaryWhite"> - </span>` +
+      `<span class="${tailClass}">${escapeHtml(tail)}</span>` +
+    `</div>`
+  );
+}
+
+function openOutcomeSummaryModal() {
+  if (!outcomeSummaryModalEl) return;
+  renderOutcomeSummaryBody();
+  outcomeSummaryModalEl.classList.remove("hidden");
+  outcomeSummaryModalEl.setAttribute("aria-hidden", "false");
+}
+
+function closeOutcomeSummaryModal() {
+  if (!outcomeSummaryModalEl) return;
+  outcomeSummaryModalEl.classList.add("hidden");
+  outcomeSummaryModalEl.setAttribute("aria-hidden", "true");
+}
+
+function openWelcomeModal() {
+  if (!welcomeModalEl) return;
+  if (welcomeDontShowAgainEl) welcomeDontShowAgainEl.checked = !!gameState.hideWelcomeMessage;
+  welcomeModalEl.classList.remove("hidden");
+  welcomeModalEl.setAttribute("aria-hidden", "false");
+}
+
+function closeWelcomeModal() {
+  if (!welcomeModalEl) return;
+  welcomeModalEl.classList.add("hidden");
+  welcomeModalEl.setAttribute("aria-hidden", "true");
+}
+
+function openFeedbackModal() {
+  if (!feedbackModalEl) return;
+  feedbackModalEl.classList.remove("hidden");
+  feedbackModalEl.setAttribute("aria-hidden", "false");
+}
+
+function closeFeedbackModal() {
+  if (!feedbackModalEl) return;
+  feedbackModalEl.classList.add("hidden");
+  feedbackModalEl.setAttribute("aria-hidden", "true");
 }
 
 function stopRollSound() {
@@ -262,6 +502,23 @@ const exportSaveBtn = document.getElementById("exportSaveBtn");
 const importSaveBtn = document.getElementById("importSaveBtn");
 const importFileInput = document.getElementById("importFileInput");
 const clearSaveBtn = document.getElementById("clearSaveBtn");
+const bgmVolumeRangeEl = document.getElementById("bgmVolumeRange");
+const sfxVolumeRangeEl = document.getElementById("sfxVolumeRange");
+const bgmVolumeValueEl = document.getElementById("bgmVolumeValue");
+const sfxVolumeValueEl = document.getElementById("sfxVolumeValue");
+const openOutcomeSummaryBtn = document.getElementById("openOutcomeSummaryBtn");
+const outcomeSummaryModalEl = document.getElementById("outcomeSummaryModal");
+const outcomeSummaryCloseEl = document.getElementById("outcomeSummaryClose");
+const outcomeSummaryCountEl = document.getElementById("outcomeSummaryCount");
+const outcomeSummaryBodyEl = document.getElementById("outcomeSummaryBody");
+const welcomeModalEl = document.getElementById("welcomeModal");
+const welcomeModalCloseEl = document.getElementById("welcomeModalClose");
+const welcomeDontShowAgainEl = document.getElementById("welcomeDontShowAgain");
+const openFeedbackBtn = document.getElementById("openFeedbackBtn");
+const feedbackModalEl = document.getElementById("feedbackModal");
+const feedbackModalCloseEl = document.getElementById("feedbackModalClose");
+const feedbackFormEl = document.getElementById("feedbackForm");
+const feedbackNextUrlEl = document.getElementById("feedbackNextUrl");
 
 // ---- MOVE PIGGY + SAVE INTO DRAWER ON COMPACT SCREENS ----
 const navToggleEl = document.getElementById("navToggle");
@@ -281,6 +538,7 @@ const oddsModalTitleEl = document.getElementById("oddsModalTitle");
 const oddsModalCloseEl = document.getElementById("oddsModalClose");
 const oddsModalRowsEl = document.getElementById("oddsModalRows");
 const oddsModalIncrementsEl = document.getElementById("oddsModalIncrements");
+let piggyBtnFitRaf = 0;
 
 const comeTravelZones = {
   4: zoneCome4,
@@ -364,7 +622,22 @@ function updateDrawerPlacements() {
       piggyHomeMarker.parentNode.insertBefore(piggySectionEl, piggyHomeMarker.nextSibling);
     }
   }
+  schedulePiggyButtonTextFit();
 }
+  // Prevent background page from scrolling when the drawer is open on touch devices
+  if (navToggleEl) {
+    navToggleEl.addEventListener('change', () => {
+      try {
+        if (navToggleEl.checked) {
+          document.body.style.overflow = 'hidden';
+        } else {
+          document.body.style.overflow = '';
+        }
+      } catch (e) {
+        // ignore
+      }
+    });
+  }
 
 window.addEventListener("resize", updateDrawerPlacements);
 window.addEventListener("orientationchange", updateDrawerPlacements);
@@ -856,11 +1129,15 @@ const gameState = {
   _rollSoundFlags: null,
   _rollWinCents: 0,
   _rollLoseCents: 0,
+  _currentRollSettlements: [],
+  _currentRollPointSets: [],
+  hideWelcomeMessage: false,
 
   bets: [],
 
   lastOutcomeLines: [],      // UI-only: the lines shown in the outcome panel
 _currentOutcomeLines: null, // UI-only: per-roll scratchpad
+  recentOutcomeLines: [],
 
 
   // Undo stack: only "extras" chip actions are recorded here.
@@ -1492,6 +1769,29 @@ function settleBet(bet, result, profitCents) {
     if (typeof gameState._rollLoseCents === "number") gameState._rollLoseCents += bet.amountCents;
   }
 
+  if (Array.isArray(gameState._currentRollSettlements)) {
+    let pointNumber = null;
+    if (typeof bet.number === "number") {
+      pointNumber = bet.number;
+    } else if (typeof bet.pointNumber === "number") {
+      pointNumber = bet.pointNumber;
+    } else if (
+      (bet.type === "passLine" || bet.type === "dontPass") &&
+      gameState.phase === "point" &&
+      typeof gameState.point === "number"
+    ) {
+      pointNumber = gameState.point;
+    }
+
+    gameState._currentRollSettlements.push({
+      betId: bet.id,
+      betType: bet.type,
+      wagerCents: bet.amountCents,
+      result,
+      netCents: netForTracker,
+      pointNumber
+    });
+  }
 
     // Per-roll net (for the simplified "Win/Loss per roll" status line)
   if (typeof gameState._currentRollNetCents === "number") {
@@ -1647,6 +1947,11 @@ function createPassLineBet(amountCents) {
     resolve(outcome) {
       if (this.status !== "active") return false;
 
+      if (outcome.pointAction === "set" && isPointNumber(outcome.total)) {
+        recordPointSetForSummary(this, outcome.total);
+        return false;
+      }
+
       if (outcome.passLine === "win") {
         settleBet(this, "win", this.amountCents);
         return true;
@@ -1675,6 +1980,11 @@ function createDontPassBet(amountCents) {
 
     resolve(outcome) {
       if (this.status !== "active") return false;
+
+      if (outcome.pointAction === "set" && isPointNumber(outcome.total)) {
+        recordPointSetForSummary(this, outcome.total);
+        return false;
+      }
 
       if (outcome.dontPassLine === "win") {
         settleBet(this, "win", this.amountCents);
@@ -1845,6 +2155,7 @@ function createComeBet(amountCents) {
       }
 
       if (isPointNumber(total)) {
+        recordPointSetForSummary(this, total);
         const traveled = createComePointBet(this.amountCents, total, this.id);
         gameState.bets.push(traveled);
         const chipSrc = zoneLastChipSrc.come || selectedChipImgSrc;
@@ -1896,6 +2207,7 @@ function createDontComeBet(amountCents) {
       }
 
       if (isPointNumber(total)) {
+        recordPointSetForSummary(this, total);
         const traveled = createDontComePointBet(this.amountCents, total, this.id);
         gameState.bets.push(traveled);
         const chipSrc = zoneLastChipSrc.dontCome || selectedChipImgSrc;
@@ -1981,8 +2293,9 @@ function updateChipButtonStyles() {
 /* --------------------
    SAVE SYSTEM (localStorage + export/import)
 -------------------- */
-const SAVE_KEY = "crapsMobile_save_v1";
-const SAVE_VERSION = 1;
+const SAVE_KEY_V1 = "crapsMobile_save_v1";
+const SAVE_KEY = "crapsMobile_save_v2";
+const SAVE_VERSION = 2;
 
 function buildSaveObject() {
   return {
@@ -1990,7 +2303,11 @@ function buildSaveObject() {
     savedAt: new Date().toISOString(),
     bankrollCents: gameState.bankrollCents,
     piggybankCents: gameState.piggybankCents,
-    netTrackerCents: gameState.netTrackerCents
+    netTrackerCents: gameState.netTrackerCents,
+    hideWelcomeMessage: !!gameState.hideWelcomeMessage,
+    recentOutcomeLines: Array.isArray(gameState.recentOutcomeLines)
+      ? gameState.recentOutcomeLines.slice(-MAX_OUTCOME_HISTORY_LINES)
+      : []
   };
 }
 
@@ -1998,15 +2315,61 @@ function isValidNumber(n) {
   return typeof n === "number" && Number.isFinite(n);
 }
 
-function isValidSaveObject(obj) {
-  if (!obj || typeof obj !== "object") return false;
-  if (obj.version !== SAVE_VERSION) return false;
+function normalizeOutcomeLines(lines) {
+  if (!Array.isArray(lines)) return [];
+  const normalized = [];
+  for (const line of lines) {
+    if (typeof line === "string") normalized.push(line);
+  }
+  return normalized.slice(-MAX_OUTCOME_HISTORY_LINES);
+}
 
-  return (
-    isValidNumber(obj.bankrollCents) &&
-    isValidNumber(obj.piggybankCents) &&
-    isValidNumber(obj.netTrackerCents)
-  );
+function normalizeSaveObject(obj) {
+  if (!obj || typeof obj !== "object") return null;
+
+  // v1 -> v2 migration
+  if (obj.version === 1) {
+    if (
+      !isValidNumber(obj.bankrollCents) ||
+      !isValidNumber(obj.piggybankCents) ||
+      !isValidNumber(obj.netTrackerCents)
+    ) {
+      return null;
+    }
+
+    return {
+      version: 2,
+      savedAt: typeof obj.savedAt === "string" ? obj.savedAt : new Date().toISOString(),
+      bankrollCents: Math.round(obj.bankrollCents),
+      piggybankCents: Math.round(obj.piggybankCents),
+      netTrackerCents: Math.round(obj.netTrackerCents),
+      hideWelcomeMessage: false,
+      recentOutcomeLines: []
+    };
+  }
+
+  // v2 current schema
+  if (obj.version === 2) {
+    if (
+      !isValidNumber(obj.bankrollCents) ||
+      !isValidNumber(obj.piggybankCents) ||
+      !isValidNumber(obj.netTrackerCents)
+    ) {
+      return null;
+    }
+
+    return {
+      version: 2,
+      savedAt: typeof obj.savedAt === "string" ? obj.savedAt : new Date().toISOString(),
+      bankrollCents: Math.round(obj.bankrollCents),
+      piggybankCents: Math.round(obj.piggybankCents),
+      netTrackerCents: Math.round(obj.netTrackerCents),
+      hideWelcomeMessage: !!obj.hideWelcomeMessage,
+      recentOutcomeLines: normalizeOutcomeLines(obj.recentOutcomeLines)
+    };
+  }
+
+  return null;
 }
 
 function saveGameToLocal() {
@@ -2029,22 +2392,30 @@ function ensureAutoRefill() {
 }
 
 function loadGameFromLocal() {
-  const raw = localStorage.getItem(SAVE_KEY);
+  const rawV2 = localStorage.getItem(SAVE_KEY);
+  const rawV1 = localStorage.getItem(SAVE_KEY_V1);
+  const raw = rawV2 || rawV1;
   if (!raw) return false;
 
   try {
-    const data = JSON.parse(raw);
-    if (!isValidSaveObject(data)) return false;
+    const parsed = JSON.parse(raw);
+    const data = normalizeSaveObject(parsed);
+    if (!data) return false;
 
     gameState.bankrollCents = Math.round(data.bankrollCents);
     gameState.piggybankCents = Math.round(data.piggybankCents);
     gameState.netTrackerCents = Math.round(data.netTrackerCents);
+    gameState.hideWelcomeMessage = !!data.hideWelcomeMessage;
+    gameState.recentOutcomeLines = normalizeOutcomeLines(data.recentOutcomeLines);
 
     // We do NOT restore table state
     gameState.bets = [];
     gameState.undoStack = [];
     gameState.phase = "comeOut";
     gameState.point = null;
+
+    // Persist as latest schema/key so old v1 saves auto-upgrade.
+    saveGameToLocal();
 
     return true;
   } catch {
@@ -2109,6 +2480,29 @@ function refreshButtonLabels() {
     // Piggybank buttons use the selected chip amount
   if (depositBtn) depositBtn.textContent = `Deposit (${chipText})`;
   if (withdrawBtn) withdrawBtn.textContent = `Withdraw (${chipText})`;
+  schedulePiggyButtonTextFit();
+}
+
+function fitButtonTextToWidth(btn, minPx = 10) {
+  if (!btn) return;
+
+  // Reset to stylesheet size first so breakpoints can control the "max" size.
+  btn.style.fontSize = "";
+  let size = parseFloat(window.getComputedStyle(btn).fontSize) || 16;
+
+  while (size > minPx && btn.scrollWidth > btn.clientWidth) {
+    size -= 0.5;
+    btn.style.fontSize = `${size}px`;
+  }
+}
+
+function schedulePiggyButtonTextFit() {
+  if (piggyBtnFitRaf) cancelAnimationFrame(piggyBtnFitRaf);
+  piggyBtnFitRaf = requestAnimationFrame(() => {
+    piggyBtnFitRaf = 0;
+    fitButtonTextToWidth(depositBtn, 10);
+    fitButtonTextToWidth(withdrawBtn, 10);
+  });
 }
 
 function refreshUIState() {
@@ -2570,8 +2964,9 @@ function uiHandleImportFile(event) {
   const reader = new FileReader();
   reader.onload = () => {
     try {
-      const data = JSON.parse(String(reader.result));
-      if (!isValidSaveObject(data)) {
+      const parsed = JSON.parse(String(reader.result));
+      const data = normalizeSaveObject(parsed);
+      if (!data) {
         console.log("IMPORT FAILED: invalid or unsupported save file.");
         return;
       }
@@ -2579,6 +2974,8 @@ function uiHandleImportFile(event) {
       gameState.bankrollCents = Math.round(data.bankrollCents);
       gameState.piggybankCents = Math.round(data.piggybankCents);
       gameState.netTrackerCents = Math.round(data.netTrackerCents);
+      gameState.hideWelcomeMessage = !!data.hideWelcomeMessage;
+      gameState.recentOutcomeLines = normalizeOutcomeLines(data.recentOutcomeLines);
 
       // Reset table state on import (keeps it safe/simple)
       gameState.bets = [];
@@ -2612,6 +3009,7 @@ function uiHandleImportFile(event) {
 function uiClearSave() {
   try {
     localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(SAVE_KEY_V1);
     console.log("Save cleared from localStorage.");
   } catch (e) {
     console.warn("Failed to clear save:", e);
@@ -2637,6 +3035,8 @@ async function rollDice() {
  gameState._rollSoundFlags = { win: false, lose: false };
  gameState._rollWinCents = 0;
  gameState._rollLoseCents = 0;
+ gameState._currentRollSettlements = [];
+ gameState._currentRollPointSets = [];
 
   const prevPhase = gameState.phase;
   const prevPoint = gameState.point;
@@ -2691,6 +3091,10 @@ if (net > 0) {
 }
 
 showOutcomeLines(gameState.lastOutcomeLines);
+appendOutcomeSummaryForRoll({ die1, die2, total });
+if (outcomeSummaryModalEl && !outcomeSummaryModalEl.classList.contains("hidden")) {
+  renderOutcomeSummaryBody();
+}
 
   // Play at most one win/lose sound based on aggregate win/loss totals
   if (gameState._rollWinCents > gameState._rollLoseCents) {
@@ -2704,6 +3108,8 @@ showOutcomeLines(gameState.lastOutcomeLines);
   gameState._rollSoundFlags = null;
   gameState._rollWinCents = 0;
   gameState._rollLoseCents = 0;
+  gameState._currentRollSettlements = [];
+  gameState._currentRollPointSets = [];
 
   console.log("--------------------------------------------------");
   console.log("Roll:", gameState.lastRoll);
@@ -2717,7 +3123,26 @@ showOutcomeLines(gameState.lastOutcomeLines);
    WIRE + INIT
 -------------------- */
 function init() {
-    // Universal tap sound for all button clicks
+  loadAudioPrefsFromLocal();
+  updateAudioControlsUI();
+
+  if (bgmVolumeRangeEl) {
+    bgmVolumeRangeEl.addEventListener("input", () => {
+      const pct = Number(bgmVolumeRangeEl.value);
+      setBgmVolume(pct / 100);
+      updateAudioControlsUI();
+    });
+  }
+
+  if (sfxVolumeRangeEl) {
+    sfxVolumeRangeEl.addEventListener("input", () => {
+      const pct = Number(sfxVolumeRangeEl.value);
+      setSfxVolume(pct / 100);
+      updateAudioControlsUI();
+    });
+  }
+
+  // Universal tap sound for all button clicks
   document.addEventListener("click", (e) => {
     const t = e.target;
     if (!t) return;
@@ -2833,6 +3258,56 @@ if (clearAllBetsBtn) clearAllBetsBtn.addEventListener("click", uiClearLineBets);
   if (importSaveBtn) importSaveBtn.addEventListener("click", uiStartImport);
   if (clearSaveBtn) clearSaveBtn.addEventListener("click", uiClearSave);
   if (importFileInput) importFileInput.addEventListener("change", uiHandleImportFile);
+  if (openOutcomeSummaryBtn) {
+    openOutcomeSummaryBtn.addEventListener("click", openOutcomeSummaryModal);
+  }
+  if (outcomeSummaryCloseEl) {
+    outcomeSummaryCloseEl.addEventListener("click", closeOutcomeSummaryModal);
+  }
+  if (outcomeSummaryModalEl) {
+    outcomeSummaryModalEl.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t && t.dataset && t.dataset.closeOutcome === "true") closeOutcomeSummaryModal();
+    });
+  }
+  if (outcomeSummaryCountEl) {
+    outcomeSummaryCountEl.addEventListener("change", renderOutcomeSummaryBody);
+  }
+  if (welcomeModalCloseEl) {
+    welcomeModalCloseEl.addEventListener("click", closeWelcomeModal);
+  }
+  if (welcomeModalEl) {
+    welcomeModalEl.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t && t.dataset && t.dataset.closeWelcome === "true") closeWelcomeModal();
+    });
+  }
+  if (welcomeDontShowAgainEl) {
+    welcomeDontShowAgainEl.addEventListener("change", () => {
+      gameState.hideWelcomeMessage = !!welcomeDontShowAgainEl.checked;
+      saveGameToLocal();
+    });
+  }
+  if (openFeedbackBtn) {
+    openFeedbackBtn.addEventListener("click", openFeedbackModal);
+  }
+  if (feedbackModalCloseEl) {
+    feedbackModalCloseEl.addEventListener("click", closeFeedbackModal);
+  }
+  if (feedbackModalEl) {
+    feedbackModalEl.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t && t.dataset && t.dataset.closeFeedback === "true") closeFeedbackModal();
+    });
+  }
+  if (feedbackNextUrlEl) {
+    feedbackNextUrlEl.value = window.location.href;
+  }
+  if (feedbackFormEl) {
+    feedbackFormEl.addEventListener("submit", () => {
+      closeFeedbackModal();
+    });
+  }
 
   if (oddsModalCloseEl) oddsModalCloseEl.addEventListener("click", closeOddsModal);
   if (oddsModalEl) {
@@ -2917,6 +3392,9 @@ if (clearAllBetsBtn) clearAllBetsBtn.addEventListener("click", uiClearLineBets);
   refreshUIState();
   clearOutcomeLines();
   startTravelCycler();
+  if (!gameState.hideWelcomeMessage) {
+    openWelcomeModal();
+  }
 
   console.log(`START BANKROLL: ${centsToDollarsString(gameState.bankrollCents)}`);
 }

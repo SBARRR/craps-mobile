@@ -156,8 +156,9 @@ padding: 12px 16px;
 
 /* Deposit/Withdraw row layout + spacing dials */
 #piggyControls {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 
   padding: 0 18px;               /* horizontal dial */
   box-sizing: border-box;
@@ -1538,9 +1539,14 @@ button:not(#rollButton):disabled {
 
 #depositBtn,
 #withdrawBtn {
-  min-width: 150px;     /* DIAL: increase if you ever use $100 etc */
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   text-align: center;
-  white-space: nowrap;  /* prevents wrapping */
+  white-space: nowrap;
+  overflow: hidden;
+  line-height: 1.1;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
   pointer-events: auto; /* redundant but safe */
 }
 
@@ -1707,7 +1713,8 @@ button:not(#rollButton):disabled {
   }
   #depositBtn,
   #withdrawBtn{
-    min-width: 120px;
+    min-width: 0;
+    width: 100%;
     font-size: 14px;
     padding: 8px 10px;
   }
@@ -1942,91 +1949,6 @@ button:not(#rollButton):disabled {
    HAMBURGER + SIDE DRAWER
    ========================= */
 
-/* hide the checkbox */
-#navToggle{
-  position: fixed;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* button top-right */
-#hamburgerBtn{
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 200;
-
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  cursor: pointer;
-  user-select: none;
-
-  background: rgba(0,0,0,0.65);
-  border: 2px solid rgba(120, 200, 255, 0.75);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.45);
-}
-
-/* icon swap */
-#hamburgerBtn .closeIcon{ display: none; }
-#navToggle:checked + #hamburgerBtn .hamburgerIcon{ display: none; }
-#navToggle:checked + #hamburgerBtn .closeIcon{ display: inline; }
-
-#hamburgerBtn .hamburgerIcon,
-#hamburgerBtn .closeIcon{
-  font-size: 20px;
-  line-height: 1;
-}
-
-/* drawer panel (full height) */
-#sideDrawer{
-  position: fixed;
-  top: 0;
-  right: 0;
-  height: 100vh;
-  width: min(78vw, 320px);
-  z-index: 190;
-
-  background: #000;
-  box-shadow: -12px 0 28px rgba(0,0,0,0.6);
-
-  transform: translateX(100%);
-  transition: transform 180ms ease-out;
-}
-
-/* open drawer */
-#navToggle:checked ~ #sideDrawer{
-  transform: translateX(0);
-}
-
-/* backdrop (click to close) */
-#drawerBackdrop{
-  position: fixed;
-  inset: 0;
-  z-index: 180;
-  background: rgba(0,0,0,0.35);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 180ms ease-out;
-}
-
-#navToggle:checked ~ #drawerBackdrop{
-  opacity: 1;
-  pointer-events: auto;
-}
-
-
-/* =========================
-   HAMBURGER + SIDE DRAWER
-   ========================= */
-
 /* hide checkbox */
 #navToggle {
   display: none;
@@ -2069,6 +1991,7 @@ button:not(#rollButton):disabled {
   transform: translateX(100%);
   transition: transform 220ms ease-out;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 70px 14px 14px;
   box-sizing: border-box;
   display: flex;              /* drawer visible at all sizes */
@@ -2109,14 +2032,353 @@ button:not(#rollButton):disabled {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  align-items: stretch;
+}
+
+/* Make the drawer content scrollable and enable native touch scrolling on mobile */
+#sideDrawer{
+  -webkit-overflow-scrolling: touch; /* smooth momentum scrolling on iOS */
+  overscroll-behavior: contain;     /* prevent scroll chaining to background */
+  touch-action: pan-y;              /* allow vertical panning inside drawer */
+}
+
+#sideDrawer .drawerInner{
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(100vh - 84px);
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0 12px 20px; /* side padding + bottom breathing room */
 }
 
 /* Ensure save controls display nicely when placed inside the drawer (applies at all sizes) */
 #sideDrawer #saveControls{
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  margin: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-sizing: border-box;
+}
+
+#sideDrawer #saveControls button{
+  width: 100%;
+  justify-content: center;
+}
+
+#drawerSaveSlot{
+  width: 100%;
+  min-width: 0;
+}
+
+#drawerSummarySlot{
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 10px;
+}
+
+#sideDrawer #openOutcomeSummaryBtn{
+  width: 100%;
+}
+
+#drawerFeedbackSlot{
+  width: 100%;
+  min-width: 0;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+#sideDrawer #openFeedbackBtn{
+  width: 100%;
+}
+
+/* Drawer audio controls */
+#drawerVolumeSection{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 12px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-sizing: border-box;
+}
+
+#drawerVolumeSection .drawerSectionTitle{
+  font-size: 15px;
+  color: #ffd07a;
+  text-shadow: none;
+}
+
+#drawerVolumeSection .volumeRow{
+  display: grid;
+  grid-template-columns: 44px 1fr 48px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#drawerVolumeSection label{
+  font-size: 14px;
+  text-shadow: none;
+}
+
+#drawerVolumeSection input[type="range"]{
+  width: 100%;
+  min-width: 0;
+}
+
+#drawerVolumeSection span{
+  text-align: right;
+  font-size: 13px;
+  text-shadow: none;
+}
+
+#outcomeSummaryModal{
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+}
+
+#outcomeSummaryModal .modalCard{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: min(720px, 90vw);
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: auto;
+  background: rgba(20, 14, 10, 0.96);
+  border: 3px solid #b08a3c;
+  border-radius: 14px;
+  padding: 18px 20px 22px;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+#outcomeSummaryModal #outcomeSummaryControls{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+#outcomeSummaryModal #outcomeSummaryControls label,
+#outcomeSummaryModal #outcomeSummaryControls span{
+  font-size: 14px;
+  text-shadow: none;
+}
+
+#outcomeSummaryModal #outcomeSummaryCount{
+  font-family: "Cooper Black", serif;
+  background: rgba(70, 18, 28, 0.92);
+  color: #ffffff;
+  border: 2px solid rgba(176, 138, 60, 0.65);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+#outcomeSummaryBody{
+  margin: 0;
+  padding: 10px;
+  max-height: 56vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Cooper Black", serif;
+  font-size: 14px;
+  line-height: 1.4;
+  text-shadow: none;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+#outcomeSummaryBody .summaryLine{
+  margin: 0 0 6px;
+}
+
+#outcomeSummaryBody .summaryWhite{
+  color: #ffffff;
+}
+
+#outcomeSummaryBody .summaryYellow{
+  color: #ffd54f;
+}
+
+#outcomeSummaryBody .summaryBlue{
+  color: #5fb5ff;
+}
+
+#outcomeSummaryBody .summaryGreen{
+  color: #44d17a;
+}
+
+#outcomeSummaryBody .summaryRed{
+  color: #ff5f5f;
+}
+
+#welcomeModal{
+  position: fixed;
+  inset: 0;
+  z-index: 36;
+}
+
+#welcomeModal .modalCard{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 860px);
+  max-width: 92vw;
+  max-height: 84vh;
+  overflow: auto;
+  background: rgba(20, 14, 10, 0.96);
+  border: 3px solid #b08a3c;
+  border-radius: 14px;
+  padding: 12px 20px 22px;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+#welcomeBody{
+  text-shadow: none;
+  font-size: clamp(15px, 1.05vw, 18px);
+  line-height: 1.55;
+  max-width: 72ch;
+  margin: 0 auto;
+}
+
+#welcomeModal #welcomeTitle{
+  text-align: center;
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+#welcomeBody p{
+  margin: 0 0 12px;
+}
+
+#welcomeBody ul{
+  margin: 0 0 14px 20px;
+  padding: 0;
+}
+
+#welcomeBody li{
+  margin: 0 0 8px;
+}
+
+#welcomeBody .welcomeEmphasis{
+  color: #ffd54f;
+  font-size: 1.08em;
+}
+
+#welcomeDontShowRow{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 72ch;
+  margin: 10px auto 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(95, 181, 255, 0.12);
+  border: 1px solid rgba(95, 181, 255, 0.45);
+  text-shadow: none;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+#welcomeDontShowRow input{
+  accent-color: #5fb5ff;
+}
+
+#welcomeDontShowRow span{
+  color: #d8ecff;
+  font-weight: 600;
+}
+
+#feedbackModal{
+  position: fixed;
+  inset: 0;
+  z-index: 37;
+}
+
+#feedbackModal .modalCard{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 760px);
+  max-width: 92vw;
+  max-height: 84vh;
+  overflow: auto;
+  background: rgba(20, 14, 10, 0.96);
+  border: 3px solid #b08a3c;
+  border-radius: 14px;
+  padding: 18px 20px 22px;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+#feedbackForm{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  text-shadow: none;
+}
+
+#feedbackForm label{
+  font-size: 14px;
+  color: #ffd07a;
+  text-shadow: none;
+}
+
+#feedbackForm input,
+#feedbackForm textarea{
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 2px solid rgba(176, 138, 60, 0.45);
+  background: rgba(0, 0, 0, 0.32);
+  color: #ffffff;
+  font-family: "Cooper Black", serif;
+  font-size: 14px;
+  text-shadow: none;
+}
+
+#feedbackForm textarea{
+  resize: vertical;
+  min-height: 120px;
+}
+
+#feedbackSubmitBtn{
+  margin-top: 6px;
+  width: fit-content;
+  min-width: 180px;
 }
 
 @media (max-width: 1300px), (max-height: 820px){
@@ -2125,6 +2387,39 @@ button:not(#rollButton):disabled {
     display: flex;
   }
   #sideDrawer{ display: block; }
+
+  #sideDrawer{
+    width: min(86vw, 360px);
+    padding: 64px 10px 10px;
+  }
+
+  #sideDrawer .drawerInner{
+    gap: 10px;
+    padding: 0 8px 16px;
+  }
+
+  #sideDrawer #saveControls,
+  #drawerVolumeSection{
+    padding: 10px;
+  }
+
+  #drawerFeedbackSlot{
+    padding-top: 4px;
+  }
+
+  #outcomeSummaryBody{
+    font-size: 13px;
+  }
+
+  #welcomeBody{
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  #welcomeDontShowRow{
+    font-size: 14px;
+    padding: 8px 10px;
+  }
 }
 
 /* IMPORTANT:
@@ -2175,7 +2470,7 @@ button:not(#rollButton):disabled {
     transform: translateY(-3px) scale(1.05);
   }
 
-  /* shrink halo so glow doesn’t visually eat space */
+/* shrink halo so glow doesn’t visually eat space */
   #chipSelector .chipBtn::before{
     width: 62px;         /* DIAL: halo size (was 80px) */
     height: 62px;
@@ -2191,5 +2486,24 @@ button:not(#rollButton):disabled {
     box-shadow:
       0 0 16px rgba(255, 215, 0, 0.85),
       0 0 32px rgba(255, 180, 0, 0.55);
+  }
+}
+
+/* =========================
+   HAMBURGER POSITION OVERRIDE
+   >1300px  : bottom-right
+   <=1300px : top-right
+   ========================= */
+#hamburgerBtn{
+  top: auto !important;
+  right: 16px !important;
+  bottom: 16px !important;
+}
+
+@media (max-width: 1300px){
+  #hamburgerBtn{
+    top: 10px !important;
+    right: 10px !important;
+    bottom: auto !important;
   }
 }
