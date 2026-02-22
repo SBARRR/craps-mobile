@@ -1,0 +1,24 @@
+{
+  "name": "Craps Mobile",
+  "short_name": "Craps",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b5d3b",
+  "theme_color": "#0b5d3b",
+  "description": "Browser-based craps practice game.",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1414,6 +1414,19 @@ if (edge === 1) { // top
    CORE DICE + PHASE
 -------------------- */
 function rollOneDie() {
+  const cryptoObj = globalThis.crypto;
+  if (cryptoObj && typeof cryptoObj.getRandomValues === "function") {
+    // Rejection sampling avoids modulo bias when mapping byte values to 1-6.
+    const ACCEPT_MAX = 251; // 252 values (0-251) split evenly into 6 buckets.
+    const bytes = new Uint8Array(1);
+    while (true) {
+      cryptoObj.getRandomValues(bytes);
+      const value = bytes[0];
+      if (value <= ACCEPT_MAX) return (value % 6) + 1;
+    }
+  }
+
+  // Fallback for older/non-standard runtimes.
   return Math.floor(Math.random() * 6) + 1;
 }
 
@@ -3423,6 +3436,17 @@ if (clearAllBetsBtn) clearAllBetsBtn.addEventListener("click", uiClearLineBets);
   console.log(`START BANKROLL: ${centsToDollarsString(gameState.bankrollCents)}`);
 }
 
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((err) => {
+      console.warn("Service worker registration failed:", err);
+    });
+  });
+}
+
+registerServiceWorker();
 init();
 
 // Debug helpers (console use only)
